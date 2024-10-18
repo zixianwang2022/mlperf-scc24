@@ -3,7 +3,7 @@
 start_time=$(date +%s)
 echo "Yalu test script starting to run"
 
-script_cmd="python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --model-path model/stable_diffusion_fp16 --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1"
+script_cmd="python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --model-path /work1/zixian/youyang1/CM/repos/local/cache/2c71269e69d84ba8/stable_diffusion_fp16 --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1"
 echo "Running the following cmd: $script_cmd"
 
 # Allocation
@@ -13,7 +13,7 @@ echo "Running the following cmd: $script_cmd"
 # squeue -u youyang1
 # watch -n 1 rocm-smi --showmemuse
 
-python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --model-path model/stable_diffusion_fp16 --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1
+python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --model-path /work1/zixian/youyang1/CM/repos/local/cache/2c71269e69d84ba8/stable_diffusion_fp16 --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1
 
 end_time=$(date +%s)
 duration=$((end_time - start_time))
