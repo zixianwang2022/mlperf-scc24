@@ -7,7 +7,7 @@ def get_args():
     """Parse commandline."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--tsv-path", default="../coco2014/captions/captions_source.tsv", help="Dataset download location"
+        "--tsv-path", default="../coco2014/captions/captions.tsv", help="Dataset download location"
     )
     parser.add_argument(
         "--output-path", default="sample_ids.txt", help="Dataset download location"
