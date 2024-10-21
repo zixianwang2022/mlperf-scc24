@@ -2,3 +2,7 @@ loadgen/build/
 libmlperf_loadgen.a
 __pycache__/
 generated/
+
+text_to_image/hip/
+text_to_image/coco2014/
+text_to_image/output/
