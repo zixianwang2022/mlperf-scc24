@@ -75,6 +75,9 @@ class BackendPytorch(backend.Backend):
             )
             # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
         else:
+            unet_checkpoint = os.path.join(self.model_path, "unet_checkpoint.pth")
+            vae_checkpoint = os.path.join(self.model_path, "vae_checkpoint.pth")
+            
             self.scheduler = EulerDiscreteScheduler.from_pretrained(
                 os.path.join(self.model_path, "checkpoint_scheduler"),
                 subfolder="scheduler",
@@ -88,6 +91,13 @@ class BackendPytorch(backend.Backend):
                 torch_dtype=self.dtype,
             )
             # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
+             # Load U-Net and VAE from your checkpoints
+            unet_state_dict = torch.load(unet_checkpoint, map_location=self.device)
+            vae_state_dict = torch.load(vae_checkpoint, map_location=self.device)
+
+            # Assign the loaded state_dicts to U-Net and VAE
+            self.pipe.unet.load_state_dict(unet_state_dict)
+            self.pipe.vae.load_state_dict(vae_state_dict)
 
         self.pipe.to(self.device)
         #self.pipe.set_progress_bar_config(disable=True)
