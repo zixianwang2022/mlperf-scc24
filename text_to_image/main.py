@@ -24,6 +24,8 @@ import torch
 import dataset
 import coco
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("main")
 
@@ -319,13 +321,25 @@ def main():
     log.info(args)
 
     # find backend
-    backend = get_backend(
-        args.backend,
-        precision=args.dtype,
-        device=args.device,
-        model_path=args.model_path,
-        batch_size=args.max_batchsize
-    )
+    
+    # backend = get_backend(
+    #     args.backend,
+    #     precision=args.dtype,
+    #     device=args.device,
+    #     model_path=args.model_path,
+    #     batch_size=args.max_batchsize
+    # )
+    # Zixian: Oct 21: create a list of backends for multi-gpu
+    backends = [get_backend(
+                    args.backend,
+                    precision=args.dtype,
+                    device=f'cuda:{i}',
+                    model_path=args.model_path,
+                    batch_size=args.max_batchsize
+                ) 
+                for i in [0,1,2,3]]
+    
+    
     if args.dtype == "fp16":
         dtype = torch.float16
     elif args.dtype == "bf16":
@@ -341,7 +355,9 @@ def main():
         count_override = True
 
     # load model to backend
-    model = backend.load()
+    # model = backend.load()
+    # Zixian: Oct 21: create a list of models corresponding to each backend 
+    models = [backend.load() for backend in backends]
 
     # dataset to use
     dataset_class, pre_proc, post_proc, kwargs = SUPPORTED_DATASETS[args.dataset]
@@ -351,16 +367,20 @@ def main():
         pre_process=pre_proc,
         count=count,
         threads=args.threads,
-        pipe_tokenizer=model.pipe.tokenizer,
-        pipe_tokenizer_2=model.pipe.tokenizer_2,
+        # pipe_tokenizer=model.pipe.tokenizer,
+        # pipe_tokenizer_2=model.pipe.tokenizer_2,
+        pipe_tokenizer=models[0].pipe.tokenizer,
+        pipe_tokenizer_2=models[0].pipe.tokenizer_2,
         latent_dtype=dtype,
         latent_device=args.device,
         latent_framework=args.latent_framework,
         **kwargs,
     )
     final_results = {
-        "runtime": model.name(),
-        "version": model.version(),
+        # "runtime": model.name(),
+        # "version": model.version(),
+        "runtime": models[0].name(),
+        "version": models[0].version(),
         "time": int(time.time()),
         "args": vars(args),
         "cmdline": str(args),
@@ -396,16 +416,30 @@ def main():
     # warmup
     syntetic_str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit"
     latents_pt = torch.rand(ds.latents.shape, dtype=dtype).to(args.device)
-    warmup_samples = [
-        {
-            "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
-            "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
-            "latents": latents_pt,
-        }
-        for _ in range(args.max_batchsize)
-    ]
-    for i in range(5):
-        _ = backend.predict(warmup_samples)
+    # warmup_samples = [
+    #     {
+    #         "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
+    #         "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
+    #         "latents": latents_pt,
+    #     }
+    #     for _ in range(args.max_batchsize)
+    # ]
+    warmup_samples_gpus = [
+                    [
+                        {
+                            "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
+                            "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
+                            "latents": latents_pt,
+                        }
+                        for _ in range(int(args.max_batchsize))
+                    ]
+                    for model in models]
+    
+    # Zixian: Oct 21: warm up each backend 
+    for idx, backend in enumerate (backends): 
+        for i in range(3):
+            _ = backend.predict(warmup_samples_gpus[idx])
+
 
     scenario = SCENARIO_MAP[args.scenario]
     runner_map = {
@@ -414,12 +448,49 @@ def main():
         lg.TestScenario.Server: QueueRunner,
         lg.TestScenario.Offline: QueueRunner,
     }
-    runner = runner_map[scenario](
-        model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize
-    )
+    
+    # Zixian: Oct 21: create a list of runner
+    # runner = runner_map[scenario](
+    #     model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize
+    # )
+    runners = [runner_map[scenario](
+                                model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize
+                            )
+                for model in models]
 
+    # def issue_queries(query_samples):
+    #     runner.enqueue(query_samples)
     def issue_queries(query_samples):
-        runner.enqueue(query_samples)
+        print (f'\n\n len (query_samples): {len (query_samples)} \n\n')
+        
+        query_samples_len = len (query_samples)
+        query_samples_seg_len = int (query_samples_len / len (runners))
+        splitted_query_samples = []
+        for idx in range (len (runners)): 
+            log.info (f'\n\n\n')
+            log.info (f'idx: {idx}')
+            log.info (f'query_samples_len: {query_samples_len}')
+            log.info (f'idx: {idx}')
+            if idx == len (runners) -1: 
+                splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
+            else:
+                splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
+        
+        with ThreadPoolExecutor(max_workers=len(runners)) as executor:
+            # Map each runner to its respective sublist
+            futures = {
+                executor.submit(runner.enqueue, queries): runner 
+                for runner, queries in zip(runners, splitted_query_samples)
+            }
+        
+            # Optionally process the results
+            for future in as_completed(futures):
+                runner = futures[future]
+                try:
+                    result = future.result()
+                    print(f'Runner {runner} enqueued successfully.')
+                except Exception as exc:
+                    print(f'Runner {runner} generated an exception: {exc}')
 
     def flush_queries():
         pass
@@ -475,7 +546,16 @@ def main():
 
     log.info("starting {}".format(scenario))
     result_dict = {"scenario": str(scenario)}
-    runner.start_run(result_dict, args.accuracy)
+    for runner in runners: 
+        runner.start_run(result_dict, args.accuracy)
+    
+    # with ThreadPoolExecutor(max_workers=len(runners)) as executor:
+    #         # Map each runner to its respective sublist
+    #         futures = {
+    #             executor.submit(runner.finish(), (result_dict, args.accuracy)): runner 
+    #             for runner in runners 
+    #         }
+        
 
     lg.StartTestWithLogSettings(sut, qsl, settings, log_settings, audit_config)
 
@@ -484,7 +564,18 @@ def main():
         final_results["accuracy_results"] = result_dict
         post_proc.save_images(saved_images_ids, ds)
 
-    runner.finish()
+
+
+    for runner in runners: 
+        runner.finish()
+    # with ThreadPoolExecutor(max_workers=len(runners)) as executor:
+    #         # Map each runner to its respective sublist
+    #         futures = {
+    #             executor.submit(runner.finish()): runner 
+    #             for runner in runners 
+    #         }
+        
+        
     lg.DestroyQSL(qsl)
     lg.DestroySUT(sut)
 
