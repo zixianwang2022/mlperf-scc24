@@ -3,6 +3,7 @@ import os
 import torch
 import logging
 import backend
+# from diffusers import StableDiffusionXLPipeline
 from yalu_pipeline import YaluDiffusionXLPipeline
 from diffusers import EulerDiscreteScheduler
 
