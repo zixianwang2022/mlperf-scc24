@@ -3,7 +3,7 @@ import os
 import torch
 import logging
 import backend
-from diffusers import StableDiffusionXLPipeline
+from yalu_pipeline import YaluDiffusionXLPipeline
 from diffusers import EulerDiscreteScheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -65,7 +65,7 @@ class BackendPytorch(backend.Backend):
             self.scheduler = EulerDiscreteScheduler.from_pretrained(
                 self.model_id, subfolder="scheduler"
             )
-            self.pipe = StableDiffusionXLPipeline.from_pretrained(
+            self.pipe = YaluDiffusionXLPipeline.from_pretrained(
                 self.model_id,
                 scheduler=self.scheduler,
                 safety_checker=None,
@@ -79,7 +79,7 @@ class BackendPytorch(backend.Backend):
                 os.path.join(self.model_path, "checkpoint_scheduler"),
                 subfolder="scheduler",
             )
-            self.pipe = StableDiffusionXLPipeline.from_pretrained(
+            self.pipe = YaluDiffusionXLPipeline.from_pretrained(
                 os.path.join(self.model_path, "checkpoint_pipe"),
                 scheduler=self.scheduler,
                 safety_checker=None,
@@ -125,7 +125,7 @@ class BackendPytorch(backend.Backend):
 
     def encode_tokens(
         self,
-        pipe: StableDiffusionXLPipeline,
+        pipe: YaluDiffusionXLPipeline,
         text_input: torch.Tensor,
         text_input_2: Optional[torch.Tensor] = None,
         device: Optional[torch.device] = None,
