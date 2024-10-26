@@ -4,7 +4,8 @@ import torch
 import logging
 import backend
 # from diffusers import StableDiffusionXLPipeline
-from yalu_pipeline import YaluDiffusionXLPipeline
+# from yalu_pipeline import StableDiffusionMGX
+from optimum.onnxruntime import ORTStableDiffusionXLPipeline
 from diffusers import EulerDiscreteScheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -66,13 +67,14 @@ class BackendPytorch(backend.Backend):
             self.scheduler = EulerDiscreteScheduler.from_pretrained(
                 self.model_id, subfolder="scheduler"
             )
-            self.pipe = YaluDiffusionXLPipeline.from_pretrained(
+            self.pipe = ORTStableDiffusionXLPipeline.from_pretrained(
                 self.model_id,
                 scheduler=self.scheduler,
                 safety_checker=None,
                 add_watermarker=False,
                 variant="fp16" if (self.dtype == torch.float16) else None,
                 torch_dtype=self.dtype,
+                use_safetensors=False
             )
             # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
         else:
@@ -80,13 +82,14 @@ class BackendPytorch(backend.Backend):
                 os.path.join(self.model_path, "checkpoint_scheduler"),
                 subfolder="scheduler",
             )
-            self.pipe = YaluDiffusionXLPipeline.from_pretrained(
+            self.pipe = ORTStableDiffusionXLPipeline.from_pretrained(
                 os.path.join(self.model_path, "checkpoint_pipe"),
                 scheduler=self.scheduler,
                 safety_checker=None,
                 add_watermarker=False,
                 variant="fp16" if (self.dtype == torch.float16) else None,
                 torch_dtype=self.dtype,
+                use_safetensors=False
             )
             # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
 
@@ -126,7 +129,7 @@ class BackendPytorch(backend.Backend):
 
     def encode_tokens(
         self,
-        pipe: YaluDiffusionXLPipeline,
+        pipe: ORTStableDiffusionXLPipeline,
         text_input: torch.Tensor,
         text_input_2: Optional[torch.Tensor] = None,
         device: Optional[torch.device] = None,
