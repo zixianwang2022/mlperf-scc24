@@ -3,14 +3,19 @@ import os
 import torch
 import logging
 import backend
-# from diffusers import StableDiffusionXLPipeline
 # from yalu_pipeline import StableDiffusionMGX
-from optimum.onnxruntime import ORTStableDiffusionXLPipeline
-from diffusers import EulerDiscreteScheduler
+from transformers import CLIPTextModel, CLIPTokenizer, CLIPTextModelWithProjection
+from diffusers import AutoencoderKL, UNet2DConditionModel, PNDMScheduler, StableDiffusionXLPipeline, EulerDiscreteScheduler
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("backend-pytorch")
 
+
+formatter = logging.Formatter("{levelname} - {message}", style="{")
+file_handler = logging.FileHandler("backend.log", mode="a", encoding="utf-8")
+file_handler.setLevel("WARNING")
+file_handler.setFormatter(formatter)
+log.addHandler(file_handler)
 
 class BackendPytorch(backend.Backend):
     def __init__(
@@ -48,6 +53,13 @@ class BackendPytorch(backend.Backend):
         self.negative_prompt = negative_prompt
         self.max_length_neg_prompt = 77
         self.batch_size = batch_size
+        
+        self.tokenizer = None
+        self.tokenizer_2 = None
+        self.text_encoder = None
+        self.text_encoder_2 = None
+        self.unet = None
+        self.vae = None
 
     def version(self):
         return torch.__version__
@@ -64,10 +76,13 @@ class BackendPytorch(backend.Backend):
                 "Model path not provided, running with default hugging face weights\n"
                 "This may not be valid for official submissions"
             )
+            
+            raise SystemExit("Provide a valid Model Path to correctly run the program, exiting now...")
+            
             self.scheduler = EulerDiscreteScheduler.from_pretrained(
                 self.model_id, subfolder="scheduler"
             )
-            self.pipe = ORTStableDiffusionXLPipeline.from_pretrained(
+            self.pipe = StableDiffusionXLPipeline.from_pretrained(
                 self.model_id,
                 scheduler=self.scheduler,
                 safety_checker=None,
@@ -76,13 +91,13 @@ class BackendPytorch(backend.Backend):
                 torch_dtype=self.dtype,
                 use_safetensors=False
             )
-            # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
+
         else:
             self.scheduler = EulerDiscreteScheduler.from_pretrained(
                 os.path.join(self.model_path, "checkpoint_scheduler"),
                 subfolder="scheduler",
             )
-            self.pipe = ORTStableDiffusionXLPipeline.from_pretrained(
+            self.pipe = StableDiffusionXLPipeline.from_pretrained(
                 os.path.join(self.model_path, "checkpoint_pipe"),
                 scheduler=self.scheduler,
                 safety_checker=None,
@@ -91,9 +106,46 @@ class BackendPytorch(backend.Backend):
                 torch_dtype=self.dtype,
                 use_safetensors=False
             )
-            # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
-
+                                                            
+            
+            # pipeline_path = os.path.join(self.model_path, "checkpoint_pipe")
+            # self.text_encoder = CLIPTextModel.from_pretrained(pipeline_path, subfolder="text_encoder", torch_dtype=self.dtype, use_safetensors=False)
+            # self.text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(pipeline_path, subfolder="text_encoder_2", torch_dtype=self.dtype, use_safetensors=False)
+            # self.tokenizer = CLIPTokenizer.from_pretrained(pipeline_path, subfolder="tokenizer")
+            # self.tokenizer_2 = CLIPTokenizer.from_pretrained(pipeline_path, subfolder="tokenizer_2")
+            
+            # self.unet = UNet2DConditionModel.from_pretrained("/work1/zixian/youyang1/unet_quantized/unet_fp8.pt", torch_dtype=self.dtype, use_safetensors=False)
+            # self.vae = AutoencoderKL.from_pretrained("/work1/zixian/youyang1/vae_quantized/vae_int8.pt", torch_dtype=self.dtype, use_safetensors=False)
+            
+            # self.text_encoder.to(self.device)
+            # self.text_encoder_2.to(self.device)
+            # self.unet.to(self.device)
+            # self.vae.to(self.device)            
+        
         self.pipe.to(self.device)
+        #! compiling the cores together cause mysterious issues further down the line w/ `max-autotune`
+        # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
+        # self.pipe.vae.decode = torch.compile(self.pipe.vae.decode, mode="reduce-overhead", fullgraph=True)
+        
+        unet_state_dict = torch.load("/work1/zixian/youyang1/unet_quantized/unet_fp8.pt")
+        vae_state_dict = torch.load("/work1/zixian/youyang1/vae_quantized/vae_int8.pt")
+        try:
+            # It's a dictionary type
+            #! unet & vae has ['modelopt_state', 'model_state_dict']
+            new_unet_dict = unet_state_dict.get("model_state_dict")
+            new_vae_dict = vae_state_dict.get("model_state_dict")            
+            self.pipe.unet.load_state_dict(new_unet_dict)
+            self.pipe.vae.load_state_dict(vae_state_dict)
+        except Exception as e:
+            # log.error(f"Error in loading state dict for unet and/or vae: {e}")
+            new_unet_dict = unet_state_dict.get("model_state_dict")
+            # ! ERROR:backend-pytorch:UNET.pt state dict length: 3828 
+            # ! self.pipe.unet dict length: 1680
+            
+            log.error(f"UNET.pt state dict length: {len(new_unet_dict.keys())} \n" + \
+                      f"self.pipe.unet dict length: {len(self.pipe.unet.state_dict())}")
+            raise SystemExit("Quitting the program due to state dict error")
+                
         #self.pipe.set_progress_bar_config(disable=True)
 
         self.negative_prompt_tokens = self.pipe.tokenizer(
@@ -129,7 +181,7 @@ class BackendPytorch(backend.Backend):
 
     def encode_tokens(
         self,
-        pipe: ORTStableDiffusionXLPipeline,
+        pipe: StableDiffusionXLPipeline,
         text_input: torch.Tensor,
         text_input_2: Optional[torch.Tensor] = None,
         device: Optional[torch.device] = None,
