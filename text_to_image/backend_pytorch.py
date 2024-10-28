@@ -106,21 +106,6 @@ class BackendPytorch(backend.Backend):
                 torch_dtype=self.dtype,
                 use_safetensors=False
             )
-                                                            
-            
-            # pipeline_path = os.path.join(self.model_path, "checkpoint_pipe")
-            # self.text_encoder = CLIPTextModel.from_pretrained(pipeline_path, subfolder="text_encoder", torch_dtype=self.dtype, use_safetensors=False)
-            # self.text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(pipeline_path, subfolder="text_encoder_2", torch_dtype=self.dtype, use_safetensors=False)
-            # self.tokenizer = CLIPTokenizer.from_pretrained(pipeline_path, subfolder="tokenizer")
-            # self.tokenizer_2 = CLIPTokenizer.from_pretrained(pipeline_path, subfolder="tokenizer_2")
-            
-            # self.unet = UNet2DConditionModel.from_pretrained("/work1/zixian/youyang1/unet_quantized/unet_fp8.pt", torch_dtype=self.dtype, use_safetensors=False)
-            # self.vae = AutoencoderKL.from_pretrained("/work1/zixian/youyang1/vae_quantized/vae_int8.pt", torch_dtype=self.dtype, use_safetensors=False)
-            
-            # self.text_encoder.to(self.device)
-            # self.text_encoder_2.to(self.device)
-            # self.unet.to(self.device)
-            # self.vae.to(self.device)            
         
         self.pipe.to(self.device)
         #! compiling the cores together cause mysterious issues further down the line w/ `max-autotune`
@@ -133,17 +118,47 @@ class BackendPytorch(backend.Backend):
             # It's a dictionary type
             #! unet & vae has ['modelopt_state', 'model_state_dict']
             new_unet_dict = unet_state_dict.get("model_state_dict")
-            new_vae_dict = vae_state_dict.get("model_state_dict")            
+            new_vae_dict = vae_state_dict.get("model_state_dict")
+            
+            # ! gonna try to delete additional keys from imported UNET
+            unet_pipe_keys = self.pipe.unet.state_dict()
+            unet_rm_keys = [k for k in new_unet_dict.keys() if k not in unet_pipe_keys]
+            vae_pipe_keys = self.pipe.vae.state_dict()
+            vae_rm_keys = [k for k in new_vae_dict.keys() if k not in vae_pipe_keys]
+
+            for k in unet_rm_keys:
+                new_unet_dict.pop(k, None)
+            for k in vae_rm_keys:
+                new_vae_dict.pop(k, None)
+            
             self.pipe.unet.load_state_dict(new_unet_dict)
-            self.pipe.vae.load_state_dict(vae_state_dict)
+            self.pipe.vae.load_state_dict(new_vae_dict)
         except Exception as e:
             # log.error(f"Error in loading state dict for unet and/or vae: {e}")
-            new_unet_dict = unet_state_dict.get("model_state_dict")
+            
             # ! ERROR:backend-pytorch:UNET.pt state dict length: 3828 
             # ! self.pipe.unet dict length: 1680
+            # ! ERROR:backend-pytorch:UNET.pt vs pipe.unet key | same cnt: 1680 | diff cnt: 2148            
+            # ! ERROR:backend-pytorch:vae.pt state dict length: 332 
+            # ! self.vae.unet dict length: 248
+            # ! ERROR:backend-pytorch:VAE.pt vs pipe.vae key | same cnt: 248 | diff cnt: 84
             
-            log.error(f"UNET.pt state dict length: {len(new_unet_dict.keys())} \n" + \
-                      f"self.pipe.unet dict length: {len(self.pipe.unet.state_dict())}")
+            # new_vae_dict = vae_state_dict.get("model_state_dict")
+            # common_cnt = 0
+            # diff_cnt = 0
+            
+            # pipe_keys = self.pipe.vae.state_dict()
+            # for k in new_vae_dict.keys():
+            #     if k in pipe_keys:
+            #         common_cnt += 1
+            #     else:
+            #         diff_cnt += 1
+            
+            
+            # log.error(f"vae.pt state dict length: {len(new_vae_dict.keys())} \n" + \
+            #           f"self.vae.unet dict length: {len(self.pipe.vae.state_dict())}")
+                    
+            # log.error(f"VAE.pt vs pipe.vae key | same cnt: {common_cnt} | diff cnt: {diff_cnt}")
             raise SystemExit("Quitting the program due to state dict error")
                 
         #self.pipe.set_progress_bar_config(disable=True)
