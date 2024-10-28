@@ -134,31 +134,13 @@ class BackendPytorch(backend.Backend):
             self.pipe.unet.load_state_dict(new_unet_dict)
             self.pipe.vae.load_state_dict(new_vae_dict)
         except Exception as e:
-            # log.error(f"Error in loading state dict for unet and/or vae: {e}")
-            
+            # log.error(f"Error in loading state dict for unet and/or vae: {e}")            
             # ! ERROR:backend-pytorch:UNET.pt state dict length: 3828 
             # ! self.pipe.unet dict length: 1680
             # ! ERROR:backend-pytorch:UNET.pt vs pipe.unet key | same cnt: 1680 | diff cnt: 2148            
             # ! ERROR:backend-pytorch:vae.pt state dict length: 332 
             # ! self.vae.unet dict length: 248
             # ! ERROR:backend-pytorch:VAE.pt vs pipe.vae key | same cnt: 248 | diff cnt: 84
-            
-            # new_vae_dict = vae_state_dict.get("model_state_dict")
-            # common_cnt = 0
-            # diff_cnt = 0
-            
-            # pipe_keys = self.pipe.vae.state_dict()
-            # for k in new_vae_dict.keys():
-            #     if k in pipe_keys:
-            #         common_cnt += 1
-            #     else:
-            #         diff_cnt += 1
-            
-            
-            # log.error(f"vae.pt state dict length: {len(new_vae_dict.keys())} \n" + \
-            #           f"self.vae.unet dict length: {len(self.pipe.vae.state_dict())}")
-                    
-            # log.error(f"VAE.pt vs pipe.vae key | same cnt: {common_cnt} | diff cnt: {diff_cnt}")
             raise SystemExit("Quitting the program due to state dict error")
                 
         #self.pipe.set_progress_bar_config(disable=True)
