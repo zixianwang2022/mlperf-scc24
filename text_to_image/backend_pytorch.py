@@ -112,36 +112,78 @@ class BackendPytorch(backend.Backend):
         # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
         # self.pipe.vae.decode = torch.compile(self.pipe.vae.decode, mode="reduce-overhead", fullgraph=True)
         
-        unet_state_dict = torch.load("/work1/zixian/youyang1/unet_quantized/unet_fp8.pt")
-        vae_state_dict = torch.load("/work1/zixian/youyang1/vae_quantized/vae_int8.pt")
-        try:
-            # It's a dictionary type
-            #! unet & vae has ['modelopt_state', 'model_state_dict']
-            new_unet_dict = unet_state_dict.get("model_state_dict")
-            new_vae_dict = vae_state_dict.get("model_state_dict")
-            
-            # ! gonna try to delete additional keys from imported UNET
-            unet_pipe_keys = self.pipe.unet.state_dict()
-            unet_rm_keys = [k for k in new_unet_dict.keys() if k not in unet_pipe_keys]
-            vae_pipe_keys = self.pipe.vae.state_dict()
-            vae_rm_keys = [k for k in new_vae_dict.keys() if k not in vae_pipe_keys]
+        if False:
+            unet_state_dict = torch.load("/work1/zixian/youyang1/unet_quantized/unet_fp8.pt")
+            vae_state_dict = torch.load("/work1/zixian/youyang1/vae_quantized/vae_int8.pt")
+            try:
+                # It's a dictionary type
+                #! unet & vae has ['modelopt_state', 'model_state_dict']
+                #! modelopt_state -> ['modelopt_state_dict', 'modelopt_version']
+                new_unet_dict = unet_state_dict.get("model_state_dict")
+                # unet_opt_dict = unet_state_dict.get("modelopt_state")
+                # log.error(f"unet opt keys: {unet_opt_dict.keys()}")
+                # log.error(f"-------------------------------------")
+                
+                # unet_opt_state_dict = unet_opt_dict.get("modelopt_state_dict")
+                # log.error(f"unet opt state dict type: {type(unet_opt_state_dict)}")
+                # log.error(f"-------------------------------------")
+                # log.error(f"unet opt state dict length: {len(unet_opt_state_dict)}")
+                # log.error(f"-------------------------------------")
+                # log.error(f"unet opt state dict element 0 length: {len(unet_opt_state_dict[0])}")
+                # log.error(f"-------------------------------------")
+                # #! is 'str'
+                # log.error(f"unet_opt_state_dict[0][0]: type -> {type(unet_opt_state_dict[0][0])} | val -> {unet_opt_state_dict[0][0]}")
+                # log.error(f"-------------------------------------")
+                # #! is 'dict'
+                # log.error(f"unet_opt_state_dict[0][1]: type -> {type(unet_opt_state_dict[0][1])} | keys -> {unet_opt_state_dict[0][1].keys()}")
+                # log.error(f"-------------------------------------")
+                # log.error("unet_opt_state_dict[0][1] keys...")
+                # for key, val in unet_opt_state_dict[0][1].items():
+                #     log.error(f"key -> {key} | type(val) -> {type(val)} | val -> {val}")
+                
+                # log.error(f"unet state dict keys: {new_unet_dict.keys()}")
+                # raise SystemExit("Checking keys now")
+                
+                #! Cannot individually establish a new model because the config files don't match
+                #! >> Code below doesn't run
+                # unet_config_path = os.path.join(self.model_path, "checkpoint_pipe/unet/config.json")
+                # unet_model = UNet2DConditionModel.load_config(unet_config_path)
+                # unet_model = UNet2DConditionModel.from_config(unet_config_path)
+                # unet_model.load_state_dict(new_unet_dict)
+                # raise SystemExit(" Success at creating unet model")
+                
+                new_vae_dict = vae_state_dict.get("model_state_dict")
+                
+                # ! gonna try to delete additional keys from imported UNET
+                unet_pipe_keys = self.pipe.unet.state_dict()
+                unet_rm_keys = [k for k in new_unet_dict.keys() if k not in unet_pipe_keys]
+                vae_pipe_keys = self.pipe.vae.state_dict()
+                vae_rm_keys = [k for k in new_vae_dict.keys() if k not in vae_pipe_keys]
 
-            for k in unet_rm_keys:
-                new_unet_dict.pop(k, None)
-            for k in vae_rm_keys:
-                new_vae_dict.pop(k, None)
-            
-            self.pipe.unet.load_state_dict(new_unet_dict)
-            self.pipe.vae.load_state_dict(new_vae_dict)
-        except Exception as e:
-            # log.error(f"Error in loading state dict for unet and/or vae: {e}")            
-            # ! ERROR:backend-pytorch:UNET.pt state dict length: 3828 
-            # ! self.pipe.unet dict length: 1680
-            # ! ERROR:backend-pytorch:UNET.pt vs pipe.unet key | same cnt: 1680 | diff cnt: 2148            
-            # ! ERROR:backend-pytorch:vae.pt state dict length: 332 
-            # ! self.vae.unet dict length: 248
-            # ! ERROR:backend-pytorch:VAE.pt vs pipe.vae key | same cnt: 248 | diff cnt: 84
-            raise SystemExit("Quitting the program due to state dict error")
+                for k in unet_rm_keys:
+                    new_unet_dict.pop(k, None)
+                for k in vae_rm_keys:
+                    new_vae_dict.pop(k, None)
+                
+                # for key,val in new_unet_dict.items():
+                #     log.error(f"New_unet_dict| key -> {key} | value dtype -> {val.dtype}")
+                
+                # for key,val in new_vae_dict.items():
+                #     log.error(f"New_vae_dict| key -> {key} | value dtype -> {val.dtype}")
+                
+                self.pipe.unet.load_state_dict(new_unet_dict)
+                self.pipe.vae.load_state_dict(new_vae_dict)
+                
+                # raise SystemExit("Manually checking quantized data types now")
+            except Exception as e:
+                log.error(f"Error in loading state dict for unet and/or vae: {e}")
+                # ! ERROR:backend-pytorch:UNET.pt state dict length: 3828 
+                # ! self.pipe.unet dict length: 1680
+                # ! ERROR:backend-pytorch:UNET.pt vs pipe.unet key | same cnt: 1680 | diff cnt: 2148            
+                # ! ERROR:backend-pytorch:vae.pt state dict length: 332 
+                # ! self.vae.unet dict length: 248
+                # ! ERROR:backend-pytorch:VAE.pt vs pipe.vae key | same cnt: 248 | diff cnt: 84
+                raise SystemExit("Quitting the program due to state dict error")
                 
         #self.pipe.set_progress_bar_config(disable=True)
 
