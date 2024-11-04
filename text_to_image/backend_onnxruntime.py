@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("backend-pytorch")
 
 
-class BackendPytorch(backend.Backend):
+class BackendOnnxruntime(backend.Backend):
     def __init__(
         self,
         model_path=None,
@@ -25,7 +25,7 @@ class BackendPytorch(backend.Backend):
         precision="fp32",
         negative_prompt="normal quality, low quality, worst quality, low res, blurry, nsfw, nude",
     ):
-        super(BackendPytorch, self).__init__()
+        super(BackendOnnxruntime, self).__init__()
         self.model_path = model_path
         if model_id == "xl":
             self.model_id = "stabilityai/stable-diffusion-xl-base-1.0"
@@ -54,7 +54,7 @@ class BackendPytorch(backend.Backend):
         return torch.__version__
 
     def name(self):
-        return "pytorch-SUT"
+        return "onnxruntime-SUT"
 
     def image_format(self):
         return "NCHW"
@@ -90,14 +90,32 @@ class BackendPytorch(backend.Backend):
                 os.path.join(self.model_path, "checkpoint_scheduler"),
                 subfolder="scheduler",
             )
-            self.pipe = StableDiffusionXLPipeline.from_pretrained(
-                os.path.join(self.model_path, "checkpoint_pipe"),
-                scheduler=self.scheduler,
-                safety_checker=None,
-                add_watermarker=False,
-                variant="fp16" if (self.dtype == torch.float16) else None,
-                torch_dtype=self.dtype,
+            # self.pipe = StableDiffusionXLPipeline.from_pretrained(
+            #     os.path.join(self.model_path, "checkpoint_pipe"),
+            #     scheduler=self.scheduler,
+            #     safety_checker=None,
+            #     add_watermarker=False,
+            #     variant="fp16" if (self.dtype == torch.float16) else None,
+            #     torch_dtype=self.dtype,
+            # )
+            
+            
+            # model_id = "stabilityai/stable-diffusion-xl-base-1.0"
+            # pipeline_rocm = ORTStableDiffusionXLPipeline.from_pretrained(
+            #     model_id,
+            #     export=True,
+            #     provider="ROCMExecutionProvider",
+            # )
+            # pipeline_rocm.save_pretrained("sdxl_onnx_base")
+            
+            self.pipe = ORTStableDiffusionXLPipeline.from_pretrained(
+                "/work1/zixian/ziw081/.cache/hub/models--stabilityai--stable-diffusion-xl-base-1.0/snapshots/462165984030d82259a11f4367a4eed129e94a7b/", 
+                local_files_only=True, 
+                export=False, 
+                provider="ROCMExecutionProvider", 
+                provider_options={"device_id": 0}
             )
+            
             # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
 
         self.pipe.to(self.device)

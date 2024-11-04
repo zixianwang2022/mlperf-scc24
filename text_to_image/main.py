@@ -181,9 +181,10 @@ def get_args():
 def get_backend(backend, **kwargs):
     if backend == "pytorch":
         from backend_pytorch import BackendPytorch
-
         backend = BackendPytorch(**kwargs)
-
+    elif backend == "onnxruntime": 
+        from backend_onnxruntime import BackendOnnxruntime 
+        backend = BackendOnnxruntime(**kwargs)
     elif backend == "debug":
         from backend_debug import BackendDebug
 
@@ -358,6 +359,10 @@ def main():
     # model = backend.load()
     # Zixian: Oct 21: create a list of models corresponding to each backend 
     models = [backend.load() for backend in backends]
+    
+    
+    # Find backend shape
+    
 
     # dataset to use
     dataset_class, pre_proc, post_proc, kwargs = SUPPORTED_DATASETS[args.dataset]
@@ -434,6 +439,19 @@ def main():
                         for _ in range(int(args.max_batchsize))
                     ]
                     for model in models]
+    
+    # Zixian: Oct 26: Debug
+    # for idx, model in enumerate (models): 
+    #     # print (f'[main.py]: model.pipe.unet.shape: {model.pipe.unet.shape}')
+    #     # print (f'[main.py]: model.pipe.vae.shape: {model.pipe.vae.shape}')
+    #     # print (f'[main.py]: model.pipe.tokenizer.shape: {model.pipe.tokenizer.shape}')
+    #     # print (f'[main.py]: model.pipe.tokenizer_2.shape: {model.pipe.tokenizer_2.shape}')
+        
+    #     print (f'[main.py]: warmup_samples_gpus[idx].shape: {warmup_samples_gpus[idx][0].shape}')
+        
+    #     raise (RuntimeError, "manual stop")
+    
+    
     
     # Zixian: Oct 21: warm up each backend 
     for idx, backend in enumerate (backends): 
