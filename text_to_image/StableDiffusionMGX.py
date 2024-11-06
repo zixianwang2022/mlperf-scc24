@@ -31,6 +31,7 @@ import sys
 import torch
 import time
 from functools import wraps
+from tqdm import tqdm
 
 from hip import hip
 from collections import namedtuple
@@ -506,7 +507,8 @@ class StableDiffusionMGX():
             refiner_steps,
             refiner_aesthetic_score,
             refiner_negative_aesthetic_score,
-            verbose=False):
+            verbose=False,
+            prompt_tokens=None):
         torch.cuda.synchronize()
         self.profile_start("run")
         # need to set this for each run
@@ -514,7 +516,10 @@ class StableDiffusionMGX():
 
         if verbose:
             print("Tokenizing prompts...")
-        prompt_tokens = self.tokenize(prompt, negative_prompt)
+        if prompt_tokens is not None:
+            prompt_tokens = prompt_tokens
+        else:
+            prompt_tokens = self.tokenize(prompt, negative_prompt)
 
         if verbose:
             print("Creating text embeddings...")
@@ -540,7 +545,11 @@ class StableDiffusionMGX():
         if verbose:
             print("Running denoising loop...")
         self.profile_start("denoise")
-        for step, t in enumerate(self.scheduler.timesteps):
+        for step, t in tqdm(enumerate(self.scheduler.timesteps), 
+                    total=len(self.scheduler.timesteps), 
+                    desc="Denoising Steps", 
+                    ncols=100, 
+                    leave=True):
             if verbose:
                 print(f"#{step}/{len(self.scheduler.timesteps)} step")
             latents = self.denoise_step(text_embeddings,

@@ -63,6 +63,12 @@ SUPPORTED_PROFILES = {
         "backend": "pytorch-dist",
         "model-name": "stable-diffusion-xl",
     },
+    # ? Yalu Ouyang modification: Nov 16 2024
+    "stable-diffusion-xl-mgx": {
+        "dataset": "coco-1024",
+        "backend": "migraphx",
+        "model-name": "stable-diffusion-xl",
+    },
 }
 
 SCENARIO_MAP = {
@@ -183,6 +189,12 @@ def get_backend(backend, **kwargs):
         from backend_pytorch import BackendPytorch
 
         backend = BackendPytorch(**kwargs)
+    
+    # ? Yalu Ouyang Modification: Nov 5 2024
+    elif backend == "migraphx":
+        from backend_migraphx import BackendMIGraphX
+        
+        backend = BackendMIGraphX(**kwargs)
 
     elif backend == "debug":
         from backend_debug import BackendDebug
@@ -337,7 +349,7 @@ def main():
                     model_path=args.model_path,
                     batch_size=args.max_batchsize
                 ) 
-                for i in [0,1,2,3]]
+                for i in [0]]
     
     
     if args.dtype == "fp16":
@@ -369,8 +381,9 @@ def main():
         threads=args.threads,
         # pipe_tokenizer=model.pipe.tokenizer,
         # pipe_tokenizer_2=model.pipe.tokenizer_2,
-        pipe_tokenizer=models[0].pipe.tokenizer,
-        pipe_tokenizer_2=models[0].pipe.tokenizer_2,
+        # ! Yalu Ouyang (Nov 6 2024) : Modified for MGX backend
+        pipe_tokenizer=models[0].tokenizer,
+        pipe_tokenizer_2=models[0].tokenizer_2,
         latent_dtype=dtype,
         latent_device=args.device,
         latent_framework=args.latent_framework,
@@ -426,9 +439,10 @@ def main():
     # ]
     warmup_samples_gpus = [
                     [
+                        # ! Yalu Ouyang (Nov 16 2024): Also changed for mgx backend
                         {
-                            "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
-                            "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
+                            "input_tokens": ds.preprocess(syntetic_str, model.tokenizer),
+                            "input_tokens_2": ds.preprocess(syntetic_str, model.tokenizer_2),
                             "latents": latents_pt,
                         }
                         for _ in range(int(args.max_batchsize))

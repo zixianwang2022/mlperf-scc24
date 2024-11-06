@@ -8,3 +8,4 @@ text_to_image/coco2014/
 text_to_image/output/
 
 *.log
+loadgen/
