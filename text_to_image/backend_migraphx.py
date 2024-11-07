@@ -124,13 +124,14 @@ class BackendMIGraphX(backend.Backend):
             force_compile = False
             # Don't use exhaustive tune when compilling .onnx -> .mxr
             exhaustive_tune = False
+            
+            tokenizers = {"clip": self.tokenizer, "clip2": self.tokenizer_2}
+            
             self.mgx = StableDiffusionMGX(self.pipeline_type, onnx_model_path=self.model_path,
                 compiled_model_path=None, use_refiner=use_refiner,
                 refiner_onnx_model_path=None,
                 refiner_compiled_model_path=None, fp16=fp16,
-                force_compile=force_compile, exhaustive_tune=exhaustive_tune)
-            
-            # self.tokenizer, self.tokenizer_2 = self.mgx.tokenize
+                force_compile=force_compile, exhaustive_tune=exhaustive_tune, tokenizers=tokenizers)
             
         return self
     
@@ -159,12 +160,12 @@ class BackendMIGraphX(backend.Backend):
                     scale=self.guidance, refiner_steps=0,
                     refiner_aesthetic_score=0,
                     refiner_negative_aesthetic_score=0, verbose=verbose,
-                    prompt_tokens=(prompt_token, prompt_token2))
+                    prompt_tokens=(prompt_token, prompt_token2), device=self.device)
                 
                 # generated = StableDiffusionMGX.convert_to_rgb_image(result)
                 #! COCO needs this to be 3-dimensions
                 reshaped = result.reshape(3, 1024, 1024)
-                self.mgx.print_summary(self.steps)
+                # self.mgx.print_summary(self.steps)
                 images.append(reshaped)
                 
             else:
@@ -182,7 +183,7 @@ class BackendMIGraphX(backend.Backend):
                         scale=self.guidance, refiner_steps=0,
                         refiner_aesthetic_score=0,
                         refiner_negative_aesthetic_score=0, verbose=verbose,
-                        prompt_tokens=prompt)
+                        prompt_tokens=prompt, device=self.device)
 
                     # generated = StableDiffusionMGX.convert_to_rgb_image(result)
                     reshaped = result.reshape(3, 1024, 1024)

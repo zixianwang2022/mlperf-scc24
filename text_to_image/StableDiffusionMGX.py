@@ -332,7 +332,7 @@ class StableDiffusionMGX():
     def __init__(self, pipeline_type, onnx_model_path, compiled_model_path,
                  use_refiner, refiner_onnx_model_path,
                  refiner_compiled_model_path, fp16, force_compile,
-                 exhaustive_tune):
+                 exhaustive_tune, tokenizers):
         if not (onnx_model_path or compiled_model_path):
             onnx_model_path = default_model_paths[pipeline_type]
 
@@ -355,12 +355,13 @@ class StableDiffusionMGX():
             model_id, subfolder="scheduler")
 
         print("Creating CLIPTokenizer tokenizers...")
-        self.tokenizers = {
-            "clip":
-            CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer"),
-            "clip2":
-            CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer_2")
-        }
+        # self.tokenizers = {
+        #     "clip":
+        #     CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer"),
+        #     "clip2":
+        #     CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer_2")
+        # }
+        self.tokenizers = tokenizers
 
         if fp16 is None:
             fp16 = []
@@ -508,11 +509,12 @@ class StableDiffusionMGX():
             refiner_aesthetic_score,
             refiner_negative_aesthetic_score,
             verbose=False,
-            prompt_tokens=None):
+            prompt_tokens=None,
+            device="cuda"):
         torch.cuda.synchronize()
         self.profile_start("run")
         # need to set this for each run
-        self.scheduler.set_timesteps(steps, device="cuda")
+        self.scheduler.set_timesteps(steps, device=device)
 
         if verbose:
             print("Tokenizing prompts...")
@@ -532,14 +534,17 @@ class StableDiffusionMGX():
                 f"Creating random input data {sample_size} (latents) with {seed = }..."
             )
         noise = torch.randn(
-            sample_size, generator=torch.manual_seed(seed)).to(device="cuda")
+            sample_size, generator=torch.manual_seed(seed)).to(device=device)
         # input h/w crop h/w output h/w
         height, width = sample_size[2:]
         time_id = [height * 8, width * 8, 0, 0, height * 8, width * 8]
-        time_ids = torch.tensor([time_id, time_id]).to(device="cuda")
+        time_ids = torch.tensor([time_id, time_id]).to(device=device)
 
         if verbose:
             print("Apply initial noise sigma\n")
+        
+        # print(f"noise.device -> {noise.device}")
+        # print(f"self.scheduler.init_noise_sigma.device -> {self.scheduler.init_noise_sigma.device}")
         latents = noise * self.scheduler.init_noise_sigma
 
         if verbose:
@@ -558,7 +563,8 @@ class StableDiffusionMGX():
                                         t,
                                         scale,
                                         time_ids,
-                                        model="unetxl")
+                                        model="unetxl",
+                                        device=device)
         self.profile_end("denoise")
         if self.use_refiner and refiner_steps > 0:
             hidden_states, text_embeddings = self.get_embeddings(
@@ -567,9 +573,9 @@ class StableDiffusionMGX():
             time_id_pos = time_id[:4] + [refiner_aesthetic_score]
             time_id_neg = time_id[:4] + [refiner_negative_aesthetic_score]
             time_ids = torch.tensor([time_id_pos,
-                                     time_id_neg]).to(device="cuda")
+                                     time_id_neg]).to(device=device)
             # need to set this for each run
-            self.scheduler.set_timesteps(refiner_steps, device="cuda")
+            self.scheduler.set_timesteps(refiner_steps, device=device)
             # Add noise to latents using timesteps
             latents = self.scheduler.add_noise(latents, noise,
                                                self.scheduler.timesteps[:1])
@@ -584,7 +590,8 @@ class StableDiffusionMGX():
                                             t,
                                             scale,
                                             time_ids,
-                                            model="refiner_unetxl")
+                                            model="refiner_unetxl",
+                                            device=device)
         if verbose:
             print("Scale denoised result...")
         latents = 1 / 0.18215 * latents
@@ -704,11 +711,11 @@ class StableDiffusionMGX():
 
     # @measure
     def denoise_step(self, text_embeddings, hidden_states, latents, t, scale,
-                     time_ids, model):
+                     time_ids, model, device):
         latents_model_input = torch.cat([latents] * 2)
         latents_model_input = self.scheduler.scale_model_input(
-            latents_model_input, t).to(device="cuda")
-        timestep = torch.atleast_1d(t.to(device="cuda"))  # convert 0D -> 1D
+            latents_model_input, t).to(device=device)
+        timestep = torch.atleast_1d(t.to(device=device))  # convert 0D -> 1D
 
         copy_tensor(self.tensors[model]["sample"], latents_model_input)
         copy_tensor(self.tensors[model]["encoder_hidden_states"],

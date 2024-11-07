@@ -349,7 +349,7 @@ def main():
                     model_path=args.model_path,
                     batch_size=args.max_batchsize
                 ) 
-                for i in [0]]
+                for i in [0, 1, 2, 3]]
     
     
     if args.dtype == "fp16":
