@@ -36,7 +36,7 @@ class BackendMIGraphX(backend.Backend):
         self,
         model_path=None,
         model_id="xl",
-        guidance=8,
+        guidance=5, #! To match the defaults of MiGraphX
         steps=20,
         batch_size=1,
         device="cuda",
@@ -122,8 +122,8 @@ class BackendMIGraphX(backend.Backend):
             fp16 = "all" if self.dtype == torch.float16 else None
             # Don't want to force .onnx to .mxr compile
             force_compile = False
-            # Don't use exhaustive tune when compilling .onnx -> .mxr
-            exhaustive_tune = False
+            # Use exhaustive tune when compilling .onnx -> .mxr
+            exhaustive_tune = True
             
             tokenizers = {"clip": self.tokenizer, "clip2": self.tokenizer_2}
             
