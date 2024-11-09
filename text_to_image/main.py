@@ -520,6 +520,8 @@ def main():
         settings.min_duration_ms = args.time * MILLI_SEC
         settings.max_duration_ms = args.time * MILLI_SEC
 
+    # Zixian: Nov8: manually setting args.qps to 1
+    args.qps=1.0
     if args.qps:
         qps = float(args.qps)
         settings.server_target_qps = qps
