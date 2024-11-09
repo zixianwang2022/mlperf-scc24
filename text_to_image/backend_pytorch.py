@@ -17,7 +17,7 @@ class BackendPytorch(backend.Backend):
         model_id="xl",
         guidance=8,
         steps=20,
-        batch_size=1,
+        batch_size=2,
         device="cuda",
         precision="fp16",
         negative_prompt="normal quality, low quality, worst quality, low res, blurry, nsfw, nude",
