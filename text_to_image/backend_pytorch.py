@@ -19,7 +19,7 @@ class BackendPytorch(backend.Backend):
         steps=20,
         batch_size=1,
         device="cuda",
-        precision="fp32",
+        precision="fp16",
         negative_prompt="normal quality, low quality, worst quality, low res, blurry, nsfw, nude",
     ):
         super(BackendPytorch, self).__init__()
