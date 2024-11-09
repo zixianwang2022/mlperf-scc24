@@ -1,5 +1,6 @@
 from typing import Optional, List, Union
 import os
+import time 
 import torch
 import logging
 import backend
@@ -362,6 +363,8 @@ class BackendPytorch(backend.Backend):
         images = []
         with torch.no_grad():
             for i in range(0, len(inputs), self.batch_size):
+                
+                s=time.time()
                 latents_input = [inputs[idx]["latents"] for idx in range(i, min(i+self.batch_size, len(inputs)))]
                 latents_input = torch.cat(latents_input).to(self.device)
                 (
@@ -381,5 +384,8 @@ class BackendPytorch(backend.Backend):
                     latents=latents_input,
                 ).images
                 images.extend(generated)
+                e=time.time()
+                
+                print (f'Time required to generate 1 image: \t{e-s}')
         return images
 

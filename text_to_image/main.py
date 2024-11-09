@@ -103,6 +103,7 @@ def get_args():
     parser.add_argument("--output", default="output", help="test results")
     parser.add_argument("--qps", type=int, help="target qps")
     parser.add_argument("--model-path", help="Path to model weights")
+    parser.add_argument("--gpu-num", type=int, default=4, help="Number of GPUs for data parallel")
 
     parser.add_argument(
         "--dtype",
@@ -337,7 +338,7 @@ def main():
                     model_path=args.model_path,
                     batch_size=args.max_batchsize
                 ) 
-                for i in [0,1,2,3]]
+                for i in np.arange (args.gpu_num)]
     
     
     if args.dtype == "fp16":
@@ -437,7 +438,7 @@ def main():
     
     # Zixian: Oct 21: warm up each backend 
     for idx, backend in enumerate (backends): 
-        for i in range(3):
+        for i in range(1):
             _ = backend.predict(warmup_samples_gpus[idx])
 
 
