@@ -154,6 +154,9 @@ def get_args():
         "--max-latency", type=float, help="mlperf max latency in pct tile"
     )
     parser.add_argument(
+        "--gpu-num", default=4, type=int, help="number of gpus to use"
+    )
+    parser.add_argument(
         "--samples-per-query",
         default=8,
         type=int,
@@ -337,7 +340,7 @@ def main():
                     model_path=args.model_path,
                     batch_size=args.max_batchsize
                 ) 
-                for i in [0,1,2,3]]
+                for i in np.arange (args.gpu_num)]
     
     
     if args.dtype == "fp16":
