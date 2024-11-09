@@ -57,36 +57,37 @@ class BackendPytorch(backend.Backend):
         return "NCHW"
 
     def load(self):
-        if self.model_path is None:
-            log.warning(
-                "Model path not provided, running with default hugging face weights\n"
-                "This may not be valid for official submissions"
-            )
-            self.scheduler = EulerDiscreteScheduler.from_pretrained(
-                self.model_id, subfolder="scheduler"
-            )
-            self.pipe = StableDiffusionXLPipeline.from_pretrained(
-                self.model_id,
-                scheduler=self.scheduler,
-                safety_checker=None,
-                add_watermarker=False,
-                variant="fp16" if (self.dtype == torch.float16) else None,
-                torch_dtype=self.dtype,
-            )
+        # if self.model_path is None:
+        #     log.warning(
+        #         "Model path not provided, running with default hugging face weights\n"
+        #         "This may not be valid for official submissions"
+        #     )
+        self.scheduler = EulerDiscreteScheduler.from_pretrained(
+            self.model_id, subfolder="scheduler"
+        )
+        self.pipe = StableDiffusionXLPipeline.from_pretrained(
+            self.model_id,
+            scheduler=self.scheduler,
+            safety_checker=None,
+            add_watermarker=False,
+            # variant="fp16" if (self.dtype == torch.float16) else None,
+            variant="fp16" ,
+            torch_dtype=self.dtype,
+        )
             # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
-        else:
-            self.scheduler = EulerDiscreteScheduler.from_pretrained(
-                os.path.join(self.model_path, "checkpoint_scheduler"),
-                subfolder="scheduler",
-            )
-            self.pipe = StableDiffusionXLPipeline.from_pretrained(
-                os.path.join(self.model_path, "checkpoint_pipe"),
-                scheduler=self.scheduler,
-                safety_checker=None,
-                add_watermarker=False,
-                variant="fp16" if (self.dtype == torch.float16) else None,
-                torch_dtype=self.dtype,
-            )
+        # else:
+        #     self.scheduler = EulerDiscreteScheduler.from_pretrained(
+        #         os.path.join(self.model_path, "checkpoint_scheduler"),
+        #         subfolder="scheduler",
+        #     )
+        #     self.pipe = StableDiffusionXLPipeline.from_pretrained(
+        #         os.path.join(self.model_path, "checkpoint_pipe"),
+        #         scheduler=self.scheduler,
+        #         safety_checker=None,
+        #         add_watermarker=False,
+        #         variant="fp16" if (self.dtype == torch.float16) else None,
+        #         torch_dtype=self.dtype,
+        #     )
             # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
 
         self.pipe.to(self.device)
