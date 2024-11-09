@@ -567,14 +567,14 @@ def main():
 
 
 
-    for runner in runners: 
-        runner.finish()
-    # with ThreadPoolExecutor(max_workers=len(runners)) as executor:
-    #         # Map each runner to its respective sublist
-    #         futures = {
-    #             executor.submit(runner.finish()): runner 
-    #             for runner in runners 
-    #         }
+    # for runner in runners: 
+    #     runner.finish()
+    with ThreadPoolExecutor(max_workers=len(runners)) as executor:
+            # Map each runner to its respective sublist
+            futures = {
+                executor.submit(runner.finish()): runner 
+                for runner in runners 
+            }
         
         
     lg.DestroyQSL(qsl)
