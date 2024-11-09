@@ -45,3 +45,9 @@ w/ guidance = 5 (still terrible)
 w/ exhaustive-tune = True
 Fastest Attempt -> Samples per second: 0.900466
 ```
+
+## Trying to identify issues with MGX
+
+1. The input **tokens** and **input_tokens_2** are the same, same shape and values.
+
+2. Trying to see if the embeddings are different.

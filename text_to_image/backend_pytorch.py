@@ -7,13 +7,13 @@ import backend
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPTextModelWithProjection
 from diffusers import AutoencoderKL, UNet2DConditionModel, PNDMScheduler, StableDiffusionXLPipeline, EulerDiscreteScheduler
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 log = logging.getLogger("backend-pytorch")
 
 
 formatter = logging.Formatter("{levelname} - {message}", style="{")
 file_handler = logging.FileHandler("backend.log", mode="a", encoding="utf-8")
-file_handler.setLevel("WARNING")
+file_handler.setLevel("INFO")
 file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
 
@@ -465,6 +465,12 @@ class BackendPytorch(backend.Backend):
                     pooled_prompt_embeds,
                     negative_pooled_prompt_embeds,
                 ) = self.prepare_inputs(inputs, i)
+                # log.info(f"[pytorch] latents_input.shape -> {latents_input.shape} | token.shape -> {[e['input_tokens']['input_ids'] for e in inputs]} | token2.shape -> {[e['input_tokens_2']['input_ids'] for e in inputs]}")
+                log.info(f"[pytorch] prompt_embeds (type {type(prompt_embeds)}) -> {prompt_embeds}")
+                log.info(f"[pytorch] negative_prompt_embeds (type {type(negative_prompt_embeds)}) -> {negative_prompt_embeds}")
+                log.info(f"[pytorch] pooled_prompt_embeds (type {type(pooled_prompt_embeds)}) -> {pooled_prompt_embeds}")
+                log.info(f"[pytorch] negative_pooled_prompt_embeds (type {type(negative_pooled_prompt_embeds)}) -> {negative_pooled_prompt_embeds}")
+                log.info(f"------DIVIDER--------")
                 generated = self.pipe(
                     prompt_embeds=prompt_embeds,
                     negative_prompt_embeds=negative_prompt_embeds,

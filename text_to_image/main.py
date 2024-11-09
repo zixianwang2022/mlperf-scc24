@@ -24,6 +24,9 @@ import torch
 import dataset
 import coco
 
+# import torchvision.transforms as T
+# transform_im = T.ToPILImage()
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logging.basicConfig(level=logging.INFO)
@@ -349,7 +352,7 @@ def main():
                     model_path=args.model_path,
                     batch_size=args.max_batchsize
                 ) 
-                for i in [0, 1, 2, 3]]
+                for i in [0]]
     
     
     if args.dtype == "fp16":
@@ -381,6 +384,8 @@ def main():
         threads=args.threads,
         # pipe_tokenizer=model.pipe.tokenizer,
         # pipe_tokenizer_2=model.pipe.tokenizer_2,
+        # pipe_tokenizer=models[0].pipe.tokenizer,
+        # pipe_tokenizer_2=models[0].pipe.tokenizer_2,
         # ! Yalu Ouyang (Nov 6 2024) : Modified for MGX backend
         pipe_tokenizer=models[0].tokenizer,
         pipe_tokenizer_2=models[0].tokenizer_2,
@@ -443,6 +448,8 @@ def main():
                         {
                             "input_tokens": ds.preprocess(syntetic_str, model.tokenizer),
                             "input_tokens_2": ds.preprocess(syntetic_str, model.tokenizer_2),
+                            # "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
+                            # "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
                             "latents": latents_pt,
                         }
                         for _ in range(int(args.max_batchsize))
@@ -454,6 +461,7 @@ def main():
         for i in range(3):
             _ = backend.predict(warmup_samples_gpus[idx])
 
+    raise SystemExit("Checking if latents_in is the same")
 
     scenario = SCENARIO_MAP[args.scenario]
     runner_map = {

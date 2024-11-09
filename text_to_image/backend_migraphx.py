@@ -21,13 +21,13 @@ from StableDiffusionMGX import StableDiffusionMGX
 
 HipEventPair = namedtuple('HipEventPair', ['start', 'end'])
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 log = logging.getLogger("backend-pytorch")
 
 
 formatter = logging.Formatter("{levelname} - {message}", style="{")
-file_handler = logging.FileHandler("backend.log", mode="a", encoding="utf-8")
-file_handler.setLevel("WARNING")
+file_handler = logging.FileHandler("backend_mgx.log", mode="a", encoding="utf-8")
+file_handler.setLevel("INFO")
 file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
 
@@ -150,17 +150,29 @@ class BackendMIGraphX(backend.Backend):
         verbose = False
         #! The main pipeline from loadgen doesn't have text prompt, only tokens
         # log.error(f"[mgx.predict()] inputs -> {inputs} | self.batch_size -> {self.batch_size}")
+        debug_prompt = "A yellow fire hydrant in front of a bike leaning against four poles"
         
         for i in range(0, len(inputs), self.batch_size):
+            latents_input = [inputs[idx]["latents"] for idx in range(i, min(i+self.batch_size, len(inputs)))]
+            latents_input = torch.cat(latents_input).to(self.device)
             if self.batch_size == 1:
                 prompt_token = inputs[i]["input_tokens"]
                 prompt_token2 = inputs[i]["input_tokens_2"]
                 seed = random.randint(0, 2**31 - 1)
-                result = self.mgx.run(prompt=None, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
+                
+                # log.info(f"[mgx] latents_input type -> {type(latents_input)} | prompt_token type -> {type(prompt_token)} | prompt_token2 type -> {type(prompt_token2)}")
+                log.info(f"[mgx] latents_input.shape -> {latents_input.shape} | prompt_token.shape -> {prompt_token['input_ids']} | prompt_token2.shape -> {prompt_token2['input_ids']}")
+                
+                # result = self.mgx.run(prompt=None, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
+                #     scale=self.guidance, refiner_steps=0,
+                #     refiner_aesthetic_score=0,
+                #     refiner_negative_aesthetic_score=0, verbose=verbose,
+                #     prompt_tokens=(prompt_token, prompt_token2), device=self.device, latents_in=latents_input)
+                result = self.mgx.run(prompt=debug_prompt, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
                     scale=self.guidance, refiner_steps=0,
                     refiner_aesthetic_score=0,
                     refiner_negative_aesthetic_score=0, verbose=verbose,
-                    prompt_tokens=(prompt_token, prompt_token2), device=self.device)
+                    device=self.device, latents_in=latents_input)
                 
                 # generated = StableDiffusionMGX.convert_to_rgb_image(result)
                 #! COCO needs this to be 3-dimensions
@@ -179,11 +191,20 @@ class BackendMIGraphX(backend.Backend):
                 
                 for prompt in prompt_list:
                     seed = random.randint(0, 2**31 - 1)
-                    result = self.mgx.run(prompt=None, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
+                    # result = self.mgx.run(prompt=None, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
+                    #     scale=self.guidance, refiner_steps=0,
+                    #     refiner_aesthetic_score=0,
+                    #     refiner_negative_aesthetic_score=0, verbose=verbose,
+                    #     prompt_tokens=prompt, device=self.device, latents_in=latents_input)
+                    
+                    # log.info(f"[mgx] latents_input type -> {type(latents_input)} | prompt_token type -> {type(prompt[0])} | prompt_token2 type -> {type(prompt[1])}")
+                    log.info(f"[mgx] latents_input.shape -> {latents_input.shape} | prompt_token.shape -> {prompt[0]['input_ids']} | prompt_token2.shape -> {prompt[1]['input_ids']}")
+                    
+                    result = self.mgx.run(prompt=debug_prompt, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
                         scale=self.guidance, refiner_steps=0,
                         refiner_aesthetic_score=0,
                         refiner_negative_aesthetic_score=0, verbose=verbose,
-                        prompt_tokens=prompt, device=self.device)
+                        device=self.device, latents_in=latents_input)
 
                     # generated = StableDiffusionMGX.convert_to_rgb_image(result)
                     reshaped = result.reshape(3, 1024, 1024)
