@@ -3,7 +3,6 @@ libmlperf_loadgen.a
 __pycache__/
 generated/
 
-
 text_to_image/coco2014/calibration/
 text_to_image/coco2014/captions/captions.tsv
 text_to_image/coco2014/captions/captions_train2014.json
@@ -18,3 +17,4 @@ text_to_image/mlperf_log_trace.json
 text_to_image/output/
 text_to_image/py_text_server_lon.py
 text_to_image/sdxl_onnx_base_export/
+
