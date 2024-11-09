@@ -465,17 +465,31 @@ def main():
         print (f'\n\n len (query_samples): {len (query_samples)} \n\n')
         
         query_samples_len = len (query_samples)
-        query_samples_seg_len = int (query_samples_len / len (runners))
+        query_samples_seg_len = query_samples_len / len (runners)
+        # surplus_samples = query_samples_len - query_samples_seg_len*len (runners)
         splitted_query_samples = []
+        
+        # surplus_list = [1 for i in range (len (runners))]
+        # for i in range (len (runners)): 
+        #     if surplus_samples > 0: 
+        #         surplus_list [len (runners)-1 -i] = 1
+        #         surplus_samples+=1 
+        #     else: 
+        #         surplus_list [len (runners)-1 -i] = 0 
+        
+        
         for idx in range (len (runners)): 
             log.info (f'\n\n\n')
             log.info (f'idx: {idx}')
             log.info (f'query_samples_len: {query_samples_len}')
             log.info (f'idx: {idx}')
-            if idx == len (runners) -1: 
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
-            else:
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
+            # if idx == len (runners) -1: 
+            #     splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
+            # else:
+            #     splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
+            splitted_query_samples.append (query_samples [int(round(query_samples_seg_len * idx)): int(round(query_samples_seg_len * (idx + 1)))])
+        
+        # splitted_query_samples = [query_samples[int(round(avg * i)): int(round(avg * (i + 1)))] for i in range(b)]
         
         with ThreadPoolExecutor(max_workers=len(runners)) as executor:
             # Map each runner to its respective sublist
@@ -568,6 +582,8 @@ def main():
         post_proc.save_images(saved_images_ids, ds)
 
 
+    lg.DestroyQSL(qsl)
+    lg.DestroySUT(sut)
 
     # for runner in runners: 
     #     runner.finish()
@@ -579,8 +595,6 @@ def main():
             }
         
         
-    lg.DestroyQSL(qsl)
-    lg.DestroySUT(sut)
 
     #
     # write final results
