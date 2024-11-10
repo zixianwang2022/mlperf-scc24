@@ -352,7 +352,7 @@ def main():
                     model_path=args.model_path,
                     batch_size=args.max_batchsize
                 ) 
-                for i in [0]]
+                for i in [0, 1, 2, 3]]
     
     
     if args.dtype == "fp16":
@@ -556,7 +556,7 @@ def main():
     sut = lg.ConstructSUT(issue_queries, flush_queries)
     #! [Yalu Ouyang] count here affects how many items to run (even for accuracy)
     qsl = lg.ConstructQSL(
-        min(count, 20), performance_sample_count, ds.load_query_samples, ds.unload_query_samples
+        count, performance_sample_count, ds.load_query_samples, ds.unload_query_samples
     )
 
     log.info("starting {}".format(scenario))
