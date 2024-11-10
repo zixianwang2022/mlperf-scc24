@@ -384,11 +384,8 @@ def main():
         threads=args.threads,
         # pipe_tokenizer=model.pipe.tokenizer,
         # pipe_tokenizer_2=model.pipe.tokenizer_2,
-        # pipe_tokenizer=models[0].pipe.tokenizer,
-        # pipe_tokenizer_2=models[0].pipe.tokenizer_2,
-        # ! Yalu Ouyang (Nov 6 2024) : Modified for MGX backend
-        pipe_tokenizer=models[0].tokenizer,
-        pipe_tokenizer_2=models[0].tokenizer_2,
+        pipe_tokenizer=models[0].pipe.tokenizer,
+        pipe_tokenizer_2=models[0].pipe.tokenizer_2,
         latent_dtype=dtype,
         latent_device=args.device,
         latent_framework=args.latent_framework,
@@ -444,13 +441,10 @@ def main():
     # ]
     warmup_samples_gpus = [
                     [
-                        # ! Yalu Ouyang (Nov 16 2024): Also changed for mgx backend
                         {
-                            "input_tokens": ds.preprocess(syntetic_str, model.tokenizer),
-                            "input_tokens_2": ds.preprocess(syntetic_str, model.tokenizer_2),
-                            # "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
-                            # "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
-                            "latents": latents_pt,
+                            "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
+                            "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
+                            "latents": latents_pt
                         }
                         for _ in range(int(args.max_batchsize))
                     ]
@@ -460,8 +454,6 @@ def main():
     for idx, backend in enumerate (backends): 
         for i in range(3):
             _ = backend.predict(warmup_samples_gpus[idx])
-
-    raise SystemExit("Checking if latents_in is the same")
 
     scenario = SCENARIO_MAP[args.scenario]
     runner_map = {
@@ -562,8 +554,9 @@ def main():
         else min(count, 500)
     )
     sut = lg.ConstructSUT(issue_queries, flush_queries)
+    #! [Yalu Ouyang] count here affects how many items to run (even for accuracy)
     qsl = lg.ConstructQSL(
-        count, performance_sample_count, ds.load_query_samples, ds.unload_query_samples
+        min(count, 20), performance_sample_count, ds.load_query_samples, ds.unload_query_samples
     )
 
     log.info("starting {}".format(scenario))

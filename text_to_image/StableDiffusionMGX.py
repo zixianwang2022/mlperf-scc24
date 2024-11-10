@@ -346,7 +346,7 @@ class StableDiffusionMGX():
     def __init__(self, pipeline_type, onnx_model_path, compiled_model_path,
                  use_refiner, refiner_onnx_model_path,
                  refiner_compiled_model_path, fp16, force_compile,
-                 exhaustive_tune, tokenizers=None):
+                 exhaustive_tune, tokenizers=None, scheduler=None):
         if not (onnx_model_path or compiled_model_path):
             onnx_model_path = default_model_paths[pipeline_type]
 
@@ -364,23 +364,22 @@ class StableDiffusionMGX():
         model_id = "stabilityai/sdxl-turbo" if is_turbo else "stabilityai/stable-diffusion-xl-base-1.0"
         print(f"Using {model_id}")
 
-        print("Creating EulerDiscreteScheduler scheduler")
-        self.scheduler = EulerDiscreteScheduler.from_pretrained(
-            model_id, subfolder="scheduler")
+        if scheduler is None:
+            print("Creating EulerDiscreteScheduler scheduler")
+            self.scheduler = EulerDiscreteScheduler.from_pretrained(
+                model_id, subfolder="scheduler")
+        else:
+            self.scheduler = scheduler
 
         print("Creating CLIPTokenizer tokenizers...")
-        # self.tokenizers = {
-        #     "clip":
-        #     CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer"),
-        #     "clip2":
-        #     CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer_2")
-        # }
         if tokenizers is None:
+            tknz_path1 = os.path.join(onnx_model_path, "tokenizer")
+            tknz_path2 = os.path.join(onnx_model_path, "tokenizer_2")
             self.tokenizers = {
                 "clip":
-                CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer"),
+                CLIPTokenizer.from_pretrained(tknz_path1),
                 "clip2":
-                CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer_2")
+                CLIPTokenizer.from_pretrained(tknz_path2)
             }
         else:
             self.tokenizers = tokenizers
@@ -523,13 +522,13 @@ class StableDiffusionMGX():
     @torch.no_grad()
     def run(self,
             prompt,
-            negative_prompt,
-            steps,
-            seed,
-            scale,
-            refiner_steps,
-            refiner_aesthetic_score,
-            refiner_negative_aesthetic_score,
+            steps=20,
+            negative_prompt="normal quality, low quality, worst quality, low res, blurry, nsfw, nude",
+            seed=42,
+            scale=5.0,
+            refiner_steps=20,
+            refiner_aesthetic_score=6.0,
+            refiner_negative_aesthetic_score=2.5,
             verbose=False,
             prompt_tokens=None,
             latents_in=None,
@@ -541,18 +540,24 @@ class StableDiffusionMGX():
 
         if verbose:
             print("Tokenizing prompts...")
+            
         if prompt_tokens is not None:
             prompt_tokens = prompt_tokens
         else:
+            # log.info(f"[mgx] input prompt: {prompt}")
             prompt_tokens = self.tokenize(prompt, negative_prompt)
+            # log.info(f"[mgx] clip token: {prompt_tokens[0]['input_ids']}")
+            # log.info(f"[mgx] clip2 token: {prompt_tokens[1]['input_ids']}")
+            
+            # raise SystemExit("Checking if tokens match")
 
         if verbose:
             print("Creating text embeddings...")
         self.profile_start("clip")
         hidden_states, text_embeddings = self.get_embeddings(prompt_tokens)        
-        log.info(f"[mgx] hidden_states (type {type(hidden_states)}): {hidden_states}")
-        log.info(f"[mgx] text_embeddings (type {type(text_embeddings)}): {text_embeddings}")
-        log.info(f"------DIVIDER--------")
+        # log.info(f"[mgx] hidden_states (shape {hidden_states.shape}): {hidden_states}")
+        # log.info(f"[mgx] text_embeddings (shape {text_embeddings.shape}): {text_embeddings}")
+        # log.info(f"------DIVIDER--------")
         self.profile_end("clip")
         sample_size = list(self.tensors["vae"]["latent_sample"].size())
         if verbose:
@@ -797,27 +802,38 @@ class StableDiffusionMGX():
 if __name__ == "__main__":
     args = get_args()
 
-    sd = StableDiffusionMGX(args.pipeline_type, args.onnx_model_path,
-                            args.compiled_model_path, args.use_refiner,
-                            args.refiner_onnx_model_path,
-                            args.refiner_compiled_model_path, args.fp16,
-                            args.force_compile, args.exhaustive_tune)
+    # sd = StableDiffusionMGX(args.pipeline_type, args.onnx_model_path,
+    #                         args.compiled_model_path, args.use_refiner,
+    #                         args.refiner_onnx_model_path,
+    #                         args.refiner_compiled_model_path, args.fp16,
+    #                         args.force_compile, args.exhaustive_tune)
+    
+    sd = StableDiffusionMGX("sdxl", onnx_model_path=args.onnx_model_path,
+                            compiled_model_path=None, use_refiner=False,
+                            refiner_onnx_model_path=None,
+                            refiner_compiled_model_path=None, fp16=args.fp16,
+                            force_compile=False, exhaustive_tune=True)
     print("Warmup")
     sd.warmup(5)
     print("Run")
 
     prompt_list = []
     # prompt_list.append(["A young man in a white shirt is playing tennis.", "tennis.jpg"])
-    prompt_list.append(["A small bird is perched on an empty bird feeder.", "bird.jpg"])
+    prompt_list.append(["Lorem ipsum dolor sit amet, consectetur adipiscing elit", "woman.jpg"])
     # prompt_list.append(["Astronaut crashlanding in Madison Square Garden, cold color palette, muted colors, detailed, 8k", "crash_astro.jpg"])
     # prompt_list.append(["John Cena giving The Rock an Attitude Adjustment off the roof, warm color palette, vivid colors, detailed, 8k", "cena_rock.jpg"])
 
     for element in prompt_list:
         prompt, img_name = element[0], element[1]
-        result = sd.run(prompt, args.negative_prompt, args.steps, args.seed,
-                args.scale, args.refiner_steps,
-                args.refiner_aesthetic_score,
-                args.refiner_negative_aesthetic_score, args.verbose)
+        # result = sd.run(prompt, args.negative_prompt, args.steps, args.seed,
+        #         args.scale, args.refiner_steps,
+        #         args.refiner_aesthetic_score,
+        #         args.refiner_negative_aesthetic_score, args.verbose)
+        
+        result = sd.run(prompt=prompt, steps=20, seed=args.seed,
+                scale=5.0, refiner_steps=0,
+                refiner_aesthetic_score=0.0,
+                refiner_negative_aesthetic_score=0.0, verbose=False)
 
         print("Summary")
         sd.print_summary(args.steps)        

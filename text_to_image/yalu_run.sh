@@ -26,5 +26,5 @@ python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-d
 end_time=$(date +%s)
 duration=$((end_time - start_time))
 
-echo "Yalu test script completed in $duration seconds."
-echo "Yalu test script completed in $duration seconds." >> yalu_run_record.txt
+echo "[$(date)] Yalu test script completed in $duration seconds."
+echo "[$(date)] Yalu test script completed in $duration seconds." >> yalu_run_record.txt

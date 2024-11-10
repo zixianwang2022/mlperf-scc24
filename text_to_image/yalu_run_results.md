@@ -35,10 +35,10 @@ Accuracy results: (much worse accuracy)
     "scenario": "TestScenario.Offline"
 },
 
-w/ guidance = 5 (still terrible)
+w/ guidance = 5 (still terrible, but the images actually look fine)
 "accuracy_results": {
-    "CLIP_SCORE": 17.48733188211918,
-    "FID_SCORE": 375.5336307825502,
+    "CLIP_SCORE": 26.513378769159317,
+    "FID_SCORE": 354.6436180397586,
     "scenario": "TestScenario.Offline"
 },
 
@@ -50,4 +50,4 @@ Fastest Attempt -> Samples per second: 0.900466
 
 1. The input **tokens** and **input_tokens_2** are the same, same shape and values.
 
-2. Trying to see if the embeddings are different.
+2. Trying to see if the embeddings are different (embeds are of type `<class 'torch.Tensor'>`)
