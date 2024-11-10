@@ -66,7 +66,7 @@ SUPPORTED_PROFILES = {
         "backend": "pytorch-dist",
         "model-name": "stable-diffusion-xl",
     },
-    # ? Yalu Ouyang modification: Nov 16 2024
+    # ? Yalu Ouyang modification: Oct 16 2024
     "stable-diffusion-xl-mgx": {
         "dataset": "coco-1024",
         "backend": "migraphx",
@@ -389,6 +389,7 @@ def main():
         latent_dtype=dtype,
         latent_device=args.device,
         latent_framework=args.latent_framework,
+        pipe_type=args.backend,
         **kwargs,
     )
     final_results = {
@@ -440,15 +441,16 @@ def main():
     #     for _ in range(args.max_batchsize)
     # ]
     warmup_samples_gpus = [
-                    [
-                        {
-                            "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
-                            "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
-                            "latents": latents_pt
-                        }
-                        for _ in range(int(args.max_batchsize))
-                    ]
-                    for model in models]
+        [
+            {
+                "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
+                "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
+                "caption": syntetic_str,
+                "latents": latents_pt
+            }
+            for _ in range(int(args.max_batchsize))
+        ]
+        for model in models]
     
     # Zixian: Oct 21: warm up each backend 
     for idx, backend in enumerate (backends): 

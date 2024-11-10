@@ -19,7 +19,6 @@ from transformers import CLIPTokenizer, CLIPTextModelWithProjection, CLIPProcess
 from diffusers import StableDiffusionXLPipeline, EulerDiscreteScheduler
 from argparse import ArgumentParser
 from StableDiffusionMGX import StableDiffusionMGX
-# import torchvision.transforms.functional as F
 import numpy as np
 
 HipEventPair = namedtuple('HipEventPair', ['start', 'end'])
@@ -34,36 +33,37 @@ file_handler.setLevel("INFO")
 file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
 
-class Decoder:
-    def __init__(self, vocab_path):
-        # Load the vocabulary with UTF-8 encoding to support non-ASCII characters
-        with open(vocab_path, "r", encoding="utf-8") as f:
-            vocab = json.load(f)
+#! Yalu Ouyang [Nov 10 2024] Keep this in case we aren't allowed to modify coco.py
+# class Decoder:
+#     def __init__(self, vocab_path):
+#         # Load the vocabulary with UTF-8 encoding to support non-ASCII characters
+#         with open(vocab_path, "r", encoding="utf-8") as f:
+#             vocab = json.load(f)
         
-        # Reverse the mapping: token_id -> word
-        self.id_to_word = {int(id_): word for word, id_ in vocab.items()}
+#         # Reverse the mapping: token_id -> word
+#         self.id_to_word = {int(id_): word for word, id_ in vocab.items()}
     
-    def decode_tokens(self, token_ids):
-        # Ensure token_ids is a list, even if a tensor is passed
-        if isinstance(token_ids, torch.Tensor):
-            token_ids = token_ids.tolist()
+#     def decode_tokens(self, token_ids):
+#         # Ensure token_ids is a list, even if a tensor is passed
+#         if isinstance(token_ids, torch.Tensor):
+#             token_ids = token_ids.tolist()
         
-        # Handle both single sequences and batches
-        if isinstance(token_ids[0], list):  # Batch of sequences
-            decoded_texts = [self._decode_sequence(sequence) for sequence in token_ids]
-            return decoded_texts
-        else:  # Single sequence
-            return self._decode_sequence(token_ids)
+#         # Handle both single sequences and batches
+#         if isinstance(token_ids[0], list):  # Batch of sequences
+#             decoded_texts = [self._decode_sequence(sequence) for sequence in token_ids]
+#             return decoded_texts
+#         else:  # Single sequence
+#             return self._decode_sequence(token_ids)
     
-    def _decode_sequence(self, token_ids):
-        # Convert token IDs to words, handling any unknown tokens
-        words = [self.id_to_word.get(token_id, "[UNK]") for token_id in token_ids]
+#     def _decode_sequence(self, token_ids):
+#         # Convert token IDs to words, handling any unknown tokens
+#         words = [self.id_to_word.get(token_id, "[UNK]") for token_id in token_ids]
         
-        # Remove special tokens and `</w>` markers
-        text = " ".join(words)
-        text = re.sub(r"(<\|startoftext\|>|<\|endoftext\|>)", "", text)  # Remove special tokens
-        text = text.replace("</w>", "").strip()  # Remove `</w>` markers and extra whitespace
-        return text
+#         # Remove special tokens and `</w>` markers
+#         text = " ".join(words)
+#         text = re.sub(r"(<\|startoftext\|>|<\|endoftext\|>)", "", text)  # Remove special tokens
+#         text = text.replace("</w>", "").strip()  # Remove `</w>` markers and extra whitespace
+#         return text
 
 class BackendMIGraphX(backend.Backend):
     def __init__(
@@ -119,8 +119,8 @@ class BackendMIGraphX(backend.Backend):
         self.pipe = self.Pipe()
         self.pipe.tokenizer = CLIPTokenizer.from_pretrained(tknz_path1)
         self.pipe.tokenizer_2 = CLIPTokenizer.from_pretrained(tknz_path2)
-        self.decoder1 = Decoder(os.path.join(self.model_path, "tokenizer/vocab.json"))
-        self.decoder2 = Decoder(os.path.join(self.model_path, "tokenizer_2/vocab.json"))
+        # self.decoder1 = Decoder(os.path.join(self.model_path, "tokenizer/vocab.json"))
+        # self.decoder2 = Decoder(os.path.join(self.model_path, "tokenizer_2/vocab.json"))
         self.tokenizers = [self.pipe.tokenizer, self.pipe.tokenizer_2]
 
     class Pipe:
@@ -200,18 +200,14 @@ class BackendMIGraphX(backend.Backend):
             latents_input = [inputs[idx]["latents"] for idx in range(i, min(i+self.batch_size, len(inputs)))]
             latents_input = torch.cat(latents_input).to(self.device)
             if self.batch_size == 1:
-                prompt_token = inputs[i]["input_tokens"]
-                prompt_token2 = inputs[i]["input_tokens_2"]
+                # prompt_token = inputs[i]["input_tokens"]
+                # log.info(f"[mgx backend batchsz=1] inputs[i] -> {inputs[i]}")
+                prompt_in = inputs[i]["caption"]
                 seed = random.randint(0, 2**31 - 1)
                 
-                # log.info(f"[mgx] latents_input type -> {type(latents_input)} | prompt_token type -> {type(prompt_token)} | prompt_token2 type -> {type(prompt_token2)}")
-                # log.info(f"[mgx backend] latents_input.shape -> {latents_input.shape} | prompt_token -> {prompt_token['input_ids']}")
-                # log.info(f"[mgx backend] prompt_token2 -> {prompt_token2['input_ids']}")
-                prompt_in = self.decoder1.decode_tokens(prompt_token['input_ids'])
-                # prompt_in2 = self.decoder2.decode_tokens(prompt_token2['input_ids'])
-                # log.info(f"[mgx backend] prompt_in: {prompt_in} | prompt_in2 -> {prompt_in2}")
+                # prompt_in = self.decoder1.decode_tokens(prompt_token['input_ids'])
                 
-                result = self.mgx.run(prompt=prompt_in[0], negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
+                result = self.mgx.run(prompt=prompt_in, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
                     scale=self.guidance, refiner_steps=0,
                     refiner_aesthetic_score=0,
                     refiner_negative_aesthetic_score=0, verbose=verbose,
@@ -225,14 +221,7 @@ class BackendMIGraphX(backend.Backend):
                 # log.info(f"[mgx backend batchsz=1] Image saved to {img_name}")
                 #! COCO needs this to be 3-dimensions
                 
-                new_res = (result / 2 + 0.5).clamp(0, 1)                
-                
-                # temp_res = F.pil_to_tensor(image)
-                # new_res = torch.empty_like(temp_res)
-
-                # new_res[0, :, :] = temp_res[2, :, :]
-                # new_res[1, :, :] = temp_res[1, :, :]
-                # new_res[2, :, :] = temp_res[0, :, :]
+                new_res = (result / 2 + 0.5).clamp(0, 1)
                 
                 # log.info(f"[mgx backend] type result: {type(result)} | result shape: {result.shape}")
                 # log.info(f"[mgx backend] type new_res: {type(new_res)} | new_res shape: {new_res.shape}")
@@ -243,18 +232,17 @@ class BackendMIGraphX(backend.Backend):
                 prompt_list = []
                 for prompt in inputs[i:min(i+self.batch_size, len(inputs))]:
                     assert isinstance(prompt, dict), "prompt (in inputs) isn't a dict"
-                    prompt_token = prompt["input_tokens"]
-                    prompt_token2 = prompt["input_tokens_2"]
-                    prompt_list.append((prompt_token, prompt_token2))
+                    # prompt_token = prompt["input_tokens"]
+                    prompt_in = inputs[i]["caption"]
                     
                 
                 for prompt in prompt_list:
                     seed = random.randint(0, 2**31 - 1)
-                    result = self.mgx.run(prompt=None, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
+                    result = self.mgx.run(prompt=prompt, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
                         scale=self.guidance, refiner_steps=0,
                         refiner_aesthetic_score=0,
                         refiner_negative_aesthetic_score=0, verbose=verbose,
-                        prompt_tokens=prompt, device=self.device, latents_in=latents_input)
+                        prompt_tokens=None, device=self.device, latents_in=latents_input)
 
                     new_res = (result / 2 + 0.5).clamp(0, 1)
                     images.extend(new_res)

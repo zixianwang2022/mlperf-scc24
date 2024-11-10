@@ -108,7 +108,6 @@ class BackendPytorch(backend.Backend):
             )
         
         self.pipe.to(self.device)
-        #! compiling the cores together cause mysterious issues further down the line w/ `max-autotune`
         # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
         # self.pipe.vae.decode = torch.compile(self.pipe.vae.decode, mode="reduce-overhead", fullgraph=True)
         
@@ -465,14 +464,7 @@ class BackendPytorch(backend.Backend):
                     pooled_prompt_embeds,
                     negative_pooled_prompt_embeds,
                 ) = self.prepare_inputs(inputs, i)
-                # log.info(f"[pytorch] latents_input.shape -> {latents_input.shape} | token.shape -> {[e['input_tokens']['input_ids'] for e in inputs]}")
-                # log.info(f"[pytorch] token2.shape -> {[e['input_tokens_2']['input_ids'] for e in inputs]}")
-                # log.info(f"[pytorch] input keys: {inputs[0].keys()}")
-                # log.info(f"[pytorch] prompt_embeds (shape {prompt_embeds.shape}) -> {prompt_embeds}")
-                # log.info(f"[pytorch] negative_prompt_embeds (shape {negative_prompt_embeds.shape}) -> {negative_prompt_embeds}")
-                # log.info(f"[pytorch] pooled_prompt_embeds (shape {pooled_prompt_embeds.shape}) -> {pooled_prompt_embeds}")
-                # log.info(f"[pytorch] negative_pooled_prompt_embeds (shape {negative_pooled_prompt_embeds.shape}) -> {negative_pooled_prompt_embeds}")
-                # log.info(f"------DIVIDER--------")
+
                 generated = self.pipe(
                     prompt_embeds=prompt_embeds,
                     negative_prompt_embeds=negative_prompt_embeds,
@@ -483,7 +475,6 @@ class BackendPytorch(backend.Backend):
                     output_type="pt",
                     latents=latents_input,
                 ).images
-                # log.info(f"generated type: {type(generated)} | generated.shape -> {generated.shape}")
                 images.extend(generated)
         return images
 
