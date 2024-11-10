@@ -49,9 +49,16 @@ def download_model(repo_id, model_path):
     ]
     
     for file_name in files_to_download:
+        local_file_path = os.path.join(model_path, file_name)
+        local_folder = os.path.dirname(local_file_path)
+
+        # Create directory structure if it does not exist
+        os.makedirs(local_folder, exist_ok=True)
+
+        # Download the file to the specific path
         try:
-            file_path = hf_hub_download(repo_id=repo_id, filename=file_name, cache_dir=model_path)
-            log.info(f"Downloaded {file_name} to {file_path}")
+            hf_hub_download(repo_id=repo_id, filename=file_name, cache_dir=local_folder, local_dir=local_folder, local_dir_use_symlinks=False)
+            log.info(f"Downloaded {file_name} to {local_file_path}")
         except Exception as e:
             log.error(f"Failed to download {file_name}: {e}")
 
