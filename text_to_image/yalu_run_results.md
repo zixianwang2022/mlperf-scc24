@@ -62,8 +62,8 @@ Samples per second: 0.900466
 
 ```json
 "accuracy_results": {
-    "CLIP_SCORE": 30.85044001042843,
-    "FID_SCORE": 145.17722123924995,
+    "CLIP_SCORE": 31.36642027646303,
+    "FID_SCORE": 144.55152561706387,
     "scenario": "TestScenario.Offline"
 },
 

@@ -24,7 +24,7 @@ import numpy as np
 HipEventPair = namedtuple('HipEventPair', ['start', 'end'])
 
 logging.basicConfig(level=logging.ERROR)
-log = logging.getLogger("backend-pytorch")
+log = logging.getLogger("backend-mgx")
 
 
 formatter = logging.Formatter("{levelname} - {message}", style="{")

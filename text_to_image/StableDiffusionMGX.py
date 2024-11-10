@@ -40,7 +40,7 @@ import coco
 import dataset
 
 logging.basicConfig(level=logging.ERROR)
-log = logging.getLogger("backend-pytorch")
+log = logging.getLogger("mgx-base")
 
 formatter = logging.Formatter("{levelname} - {message}", style="{")
 file_handler = logging.FileHandler("mgx.log", mode="a", encoding="utf-8")
@@ -818,9 +818,9 @@ if __name__ == "__main__":
     print("Run")
 
     prompt_list = []
-    # prompt_list.append(["A young man in a white shirt is playing tennis.", "tennis.jpg"])
-    prompt_list.append(["Lorem ipsum dolor sit amet, consectetur adipiscing elit", "woman.jpg"])
-    # prompt_list.append(["Astronaut crashlanding in Madison Square Garden, cold color palette, muted colors, detailed, 8k", "crash_astro.jpg"])
+    prompt_list.append(["A young man in a white shirt is playing tennis.", "tennis.jpg"])
+    # prompt_list.append(["Lorem ipsum dolor sit amet, consectetur adipiscing elit", "woman.jpg"])
+    prompt_list.append(["Astronaut crashlanding in Madison Square Garden, cold color palette, muted colors, detailed, 8k", "crash_astro.jpg"])
     # prompt_list.append(["John Cena giving The Rock an Attitude Adjustment off the roof, warm color palette, vivid colors, detailed, 8k", "cena_rock.jpg"])
 
     for element in prompt_list:

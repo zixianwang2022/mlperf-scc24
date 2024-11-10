@@ -487,10 +487,13 @@ def main():
             log.info (f'idx: {idx}')
             log.info (f'query_samples_len: {query_samples_len}')
             log.info (f'idx: {idx}')
-            if idx == len (runners) -1: 
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
-            else:
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
+            # if idx == len (runners) -1: 
+            #     splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
+            # else:
+            #     splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
+            
+            splitted_query_samples.append (query_samples [int(round(query_samples_seg_len * idx)): int(round(query_samples_seg_len * (idx + 1)))])
+                        
         
         with ThreadPoolExecutor(max_workers=len(runners)) as executor:
             # Map each runner to its respective sublist
