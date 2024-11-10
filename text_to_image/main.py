@@ -84,14 +84,19 @@ SCENARIO_MAP = {
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", choices=SUPPORTED_DATASETS.keys(), help="dataset")
-    parser.add_argument("--dataset-path", required=True, help="path to the dataset")
+    parser.add_argument("--dataset", 
+                        default="coco-1024",
+                        choices=SUPPORTED_DATASETS.keys(), help="dataset")
+    parser.add_argument("--dataset-path", 
+                        default="coco2014",help="path to the dataset")
     parser.add_argument(
-        "--profile", choices=SUPPORTED_PROFILES.keys(), help="standard profiles"
+        "--profile", 
+        default="stable-diffusion-xl-mgx",
+        choices=SUPPORTED_PROFILES.keys(), help="standard profiles"
     )
     parser.add_argument(
         "--scenario",
-        default="SingleStream",
+        default="Offline",
         help="mlperf benchmark scenario, one of " + str(list(SCENARIO_MAP.keys())),
     )
     parser.add_argument(
@@ -111,11 +116,13 @@ def get_args():
     parser.add_argument("--model-name", help="Name of the model")
     parser.add_argument("--output", default="output", help="test results")
     parser.add_argument("--qps", type=int, help="target qps")
-    parser.add_argument("--model-path", help="Path to model weights")
+    parser.add_argument("--model-path", 
+        default="/work1/zixian/youyang1/models/sdxl-1.0-base",
+        help="Path to model weights")
 
     parser.add_argument(
         "--dtype",
-        default="fp32",
+        default="fp16",
         choices=["fp32", "fp16", "bf16"],
         help="dtype of the model",
     )
@@ -153,11 +160,11 @@ def get_args():
     parser.add_argument("--ids-path", help="Path to caption ids", default="tools/sample_ids.txt")
 
     # below will override mlperf rules compliant settings - don't use for official submission
-    parser.add_argument("--time", type=int, help="time to scan in seconds")
+    parser.add_argument("--time", type=int, help="time to scan in seconds", default=5)
     parser.add_argument("--count", type=int, help="dataset items to use")
     parser.add_argument("--debug", action="store_true", help="debug")
     parser.add_argument(
-        "--performance-sample-count", type=int, help="performance sample count", default=5000
+        "--performance-sample-count", type=int, help="performance sample count", default=10
     )
     parser.add_argument(
         "--max-latency", type=float, help="mlperf max latency in pct tile"
