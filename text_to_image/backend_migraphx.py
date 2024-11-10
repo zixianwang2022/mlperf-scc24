@@ -19,6 +19,7 @@ from transformers import CLIPTokenizer, CLIPTextModelWithProjection, CLIPProcess
 from diffusers import StableDiffusionXLPipeline, EulerDiscreteScheduler
 from argparse import ArgumentParser
 from StableDiffusionMGX import StableDiffusionMGX
+from huggingface_hub import hf_hub_download, list_repo_files
 import numpy as np
 
 HipEventPair = namedtuple('HipEventPair', ['start', 'end'])
@@ -32,6 +33,27 @@ file_handler = logging.FileHandler("backend_mgx.log", mode="a", encoding="utf-8"
 file_handler.setLevel("INFO")
 file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
+
+def download_model(repo_id, model_path):    
+    if os.path.exists(model_path):
+        log.info(f"MGX models already exists at {model_path}")
+        return
+    else:
+        os.makedirs(model_path, exist_ok=True)
+    
+    repo_files = list_repo_files(repo_id)
+    
+    files_to_download = [
+        file for file in repo_files
+        if not file.endswith(".onnx") and file != "model_fp32_gpu.mxr"
+    ]
+    
+    for file_name in files_to_download:
+        try:
+            file_path = hf_hub_download(repo_id=repo_id, filename=file_name, cache_dir=model_path)
+            log.info(f"Downloaded {file_name} to {file_path}")
+        except Exception as e:
+            log.error(f"Failed to download {file_name}: {e}")
 
 #! Yalu Ouyang [Nov 10 2024] Keep this in case we aren't allowed to modify coco.py
 # class Decoder:
@@ -84,10 +106,12 @@ class BackendMIGraphX(backend.Backend):
         
         self.pipeline_type = None
         if model_id == "xl":
-            self.model_id = "stabilityai/stable-diffusion-xl-base-1.0"
+            self.model_id = "SeaSponge/scc24_mlperf_mgx_exhaustive"
             self.pipeline_type = "sdxl"
         else:
             raise ValueError(f"{model_id} is not a valid model id")
+        
+        download_model(self.model_id, self.model_path)
 
         self.device = device if torch.cuda.is_available() else "cpu"
         self.device_num = int(device[-1]) \
