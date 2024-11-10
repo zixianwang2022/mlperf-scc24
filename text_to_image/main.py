@@ -466,16 +466,7 @@ def main():
         
         query_samples_len = len (query_samples)
         query_samples_seg_len = query_samples_len / len (runners)
-        # surplus_samples = query_samples_len - query_samples_seg_len*len (runners)
         splitted_query_samples = []
-        
-        # surplus_list = [1 for i in range (len (runners))]
-        # for i in range (len (runners)): 
-        #     if surplus_samples > 0: 
-        #         surplus_list [len (runners)-1 -i] = 1
-        #         surplus_samples+=1 
-        #     else: 
-        #         surplus_list [len (runners)-1 -i] = 0 
         
         
         for idx in range (len (runners)): 
@@ -535,7 +526,7 @@ def main():
         settings.max_duration_ms = args.time * MILLI_SEC
 
     # Zixian: Nov8: manually setting args.qps to 1
-    args.qps=1.0
+    # args.qps=1.0
     if args.qps:
         qps = float(args.qps)
         settings.server_target_qps = qps
@@ -556,6 +547,8 @@ def main():
         if args.performance_sample_count
         else min(count, 500)
     )
+    
+    # count = 200
     sut = lg.ConstructSUT(issue_queries, flush_queries)
     qsl = lg.ConstructQSL(
         count, performance_sample_count, ds.load_query_samples, ds.unload_query_samples
@@ -579,7 +572,7 @@ def main():
     if args.accuracy:
         post_proc.finalize(result_dict, ds, output_dir=args.output)
         final_results["accuracy_results"] = result_dict
-        post_proc.save_images(saved_images_ids, ds)
+        # post_proc.save_images(saved_images_ids, ds)
 
 
     lg.DestroyQSL(qsl)
