@@ -3,7 +3,7 @@
 - CLIP higher is better
 - FID lower is better
 
-## Accuracy results:
+## Accuracy results
 
 ### default safetensor models
 
