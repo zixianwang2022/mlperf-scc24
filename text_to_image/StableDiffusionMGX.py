@@ -448,7 +448,7 @@ class StableDiffusionMGX():
             "vae": allocate_torch_tensors(self.models["vae"]),
         }
         
-        log.info(f"init: tensors: {self.tensors}")
+        # log.info(f"init: tensors: {self.tensors}")
 
         self.model_args = {
             "clip": tensors_to_args(self.tensors["clip"]),
@@ -457,7 +457,7 @@ class StableDiffusionMGX():
             "vae": tensors_to_args(self.tensors["vae"]),
         }
         
-        log.info(f"init: self.model_args: {self.model_args}")
+        # log.info(f"init: self.model_args: {self.model_args}")
 
         if self.use_refiner:
             log.info(f"init: self.use_refiner: {self.use_refiner}")
@@ -518,11 +518,11 @@ class StableDiffusionMGX():
                          end=hip.hipEventCreate()[1]),
         }
         
-        log.info(f"init: self.events: {self.events}")
+        # log.info(f"init: self.events: {self.events}")
 
         self.stream = hip.hipStreamCreate()[1]
         
-        log.info(f"init: self.stream: {self.stream}")
+        # log.info(f"init: self.stream: {self.stream}")
 
     def cleanup(self):
         for event in self.events.values():

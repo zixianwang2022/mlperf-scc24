@@ -59,7 +59,7 @@ def download_model(repo_id, model_path):
         # Download the file to the specific path
         try:
             hf_hub_download(repo_id=repo_id, filename=file_name, cache_dir=local_folder, local_dir=local_folder, local_dir_use_symlinks=False)
-            log.info(f"Downloaded {file_name} to {local_file_path}")
+            # log.info(f"Downloaded {file_name} to {local_file_path}")
         except Exception as e:
             log.error(f"Failed to download {file_name}: {e}")
             
