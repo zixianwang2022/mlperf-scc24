@@ -225,7 +225,7 @@ class BackendMIGraphX(backend.Backend):
             
             log.info(f"[backend_migraphx.py]: after initializing self.mgx")
             
-            self.mgx.warmup(5)
+            # self.mgx.warmup(5)
             
             log.info(f"[backend_migraphx.py]: after mgx.warmup")
             
