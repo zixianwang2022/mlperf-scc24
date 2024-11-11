@@ -395,7 +395,7 @@ class StableDiffusionMGX():
         if "vae" in fp16:
             model_names[pipeline_type]["vae"] = "vae_decoder_fp16_fix"
 
-        print("Load models...")
+        log.info("Load models...")
         self.models = {
             "vae":
             StableDiffusionMGX.load_mgx_model(
@@ -438,6 +438,8 @@ class StableDiffusionMGX():
                 exhaustive_tune=exhaustive_tune,
                 offload_copy=False)
         }
+        
+        log.info(f"init: loaded models")
 
         self.tensors = {
             "clip": allocate_torch_tensors(self.models["clip"]),
@@ -445,6 +447,8 @@ class StableDiffusionMGX():
             "unetxl": allocate_torch_tensors(self.models["unetxl"]),
             "vae": allocate_torch_tensors(self.models["vae"]),
         }
+        
+        log.info(f"init: tensors: {self.tensors}")
 
         self.model_args = {
             "clip": tensors_to_args(self.tensors["clip"]),
@@ -452,8 +456,12 @@ class StableDiffusionMGX():
             "unetxl": tensors_to_args(self.tensors["unetxl"]),
             "vae": tensors_to_args(self.tensors["vae"]),
         }
+        
+        log.info(f"init: self.model_args: {self.model_args}")
 
         if self.use_refiner:
+            log.info(f"init: self.use_refiner: {self.use_refiner}")
+            
             # Note: there is no clip for refiner, only clip2
             self.models["refiner_clip2"] = StableDiffusionMGX.load_mgx_model(
                 model_names["refiner"]["clip2"],
@@ -464,6 +472,9 @@ class StableDiffusionMGX():
                 force_compile=force_compile,
                 exhaustive_tune=exhaustive_tune,
                 offload_copy=False)
+            
+            log.info(f"init: load refiner clip2")
+            
             self.models["refiner_unetxl"] = StableDiffusionMGX.load_mgx_model(
                 model_names["refiner"]["unetxl"],
                 model_shapes[
@@ -474,6 +485,8 @@ class StableDiffusionMGX():
                 force_compile=force_compile,
                 exhaustive_tune=exhaustive_tune,
                 offload_copy=False)
+            
+            log.info(f"init: load refiner unet")
 
             self.tensors["refiner_clip2"] = allocate_torch_tensors(
                 self.models["refiner_clip2"])
@@ -484,6 +497,9 @@ class StableDiffusionMGX():
             self.model_args["refiner_unetxl"] = tensors_to_args(
                 self.tensors["refiner_unetxl"])
         # hipEventCreate return a tuple(error, event)
+        
+        log.info(f"init: creating hip events")
+        
         self.events = {
             "warmup":
             HipEventPair(start=hip.hipEventCreate()[1],
@@ -501,8 +517,12 @@ class StableDiffusionMGX():
             HipEventPair(start=hip.hipEventCreate()[1],
                          end=hip.hipEventCreate()[1]),
         }
+        
+        log.info(f"init: self.events: {self.events}")
 
         self.stream = hip.hipStreamCreate()[1]
+        
+        log.info(f"init: self.stream: {self.stream}")
 
     def cleanup(self):
         for event in self.events.values():
