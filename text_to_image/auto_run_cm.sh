@@ -4,9 +4,7 @@ cm run script --tags=run-mlperf,inference,_r4.1-dev,_short,_scc24-base    --mode
 # Remove inference cache 
 cm rm cache --tags=inference,src -f
 cm rm cache --tags=inference -f
-# Remove python cache 
 cm rm cache --tags=python -f
-# Pull repo update 
 cm pull repo
 
 # Official Implementation 
@@ -66,6 +64,24 @@ cm run script --tags=run-mlperf,inference,_r4.1-dev,_short,_scc24-base \
    
 
 
+
+
+
+cm run script --tags=run-mlperf,inference,_r4.1-dev,_short,_scc24-base \
+   --model=sdxl \
+   --framework=pytorch \
+   --category=datacenter \
+   --scenario=Offline \
+   --execution_mode=test \
+   --device=rocm \
+   --quiet --precision=float16 \
+   --adr.mlperf-implementation.tags=_branch.yalu,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
+   
+
+
+
+
+
 # Generate actual submission tree
 cm run script --tags=generate,inference,submission \
    --clean \
@@ -78,4 +94,11 @@ cm run script --tags=generate,inference,submission \
    --run_style=test \
    --adr.submission-checker.tags=_short-run \
    --quiet \
-   --submitter=<Team Name>
+   --submitter=UCSD
+
+
+cm run script --tags=push,github,mlperf,inference,submission \
+   --repo_url=https://github.com/zixianwang2022/cm4mlperf-inference \
+   --repo_branch=mlperf-inference-results-scc24 \
+   --commit_message="Results on system <HW Name>" \
+   --quiet
