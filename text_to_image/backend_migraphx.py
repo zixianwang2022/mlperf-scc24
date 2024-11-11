@@ -45,7 +45,7 @@ def download_model(repo_id, model_path):
     
     files_to_download = [
         file for file in repo_files
-        if not file.endswith(".onnx") and file != "model_fp32_gpu.mxr"
+        if not file.endswith(".onnx") and not file.endswith("model_fp32_gpu.mxr")
     ]
     
     for file_name in files_to_download:
@@ -229,11 +229,12 @@ class BackendMIGraphX(backend.Backend):
         
         for i in range(0, len(inputs), self.batch_size):
             latents_input = [inputs[idx]["latents"] for idx in range(i, min(i+self.batch_size, len(inputs)))]
-            latents_input = torch.cat(latents_input).to(self.device)
+            latents_input = torch.cat(latents_input).to(self.device)            
             if self.batch_size == 1:
                 # prompt_token = inputs[i]["input_tokens"]
                 # log.info(f"[mgx backend batchsz=1] inputs[i] -> {inputs[i]}")
                 prompt_in = inputs[i]["caption"]
+                log.error(f"[mgx backend] i -> {i} | prompt_in -> {prompt_in}")
                 seed = random.randint(0, 2**31 - 1)
                 
                 # prompt_in = self.decoder1.decode_tokens(prompt_token['input_ids'])

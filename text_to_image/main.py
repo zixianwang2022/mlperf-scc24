@@ -112,7 +112,7 @@ def get_args():
         action="store_true",
         help="enable finding peak performance pass",
     )
-    parser.add_argument("--backend", help="Name of the backend", default="migraphx")
+    parser.add_argument("--backend", help="Name of the backend")
     parser.add_argument("--model-name", help="Name of the model")
     parser.add_argument("--output", default="output", help="test results")
     parser.add_argument("--qps", type=int, help="target qps")
@@ -251,15 +251,17 @@ class RunnerBase:
         processed_results = []
         try:
             results = self.model.predict(qitem.inputs)
+            log.error("[Line 254] runs fine after results")
             processed_results = self.post_process(
                 results, qitem.content_id, qitem.inputs, self.result_dict
             )
+            log.error("[Line 258] runs fine after processed_results")
             if self.take_accuracy:
                 self.post_process.add_results(processed_results)
             self.result_timing.append(time.time() - qitem.start)
         except Exception as ex:  # pylint: disable=broad-except
             src = [self.ds.get_item_loc(i) for i in qitem.content_id]
-            log.error("thread: failed on contentid=%s, %s", src, ex)
+            log.error("[Line 262] thread: failed on contentid=%s, %s", src, ex)
             # since post_process will not run, fake empty responses
             processed_results = [[]] * len(qitem.query_id)
         finally:
