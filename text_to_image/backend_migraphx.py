@@ -125,7 +125,9 @@ class BackendMIGraphX(backend.Backend):
             raise ValueError(f"{model_id} is not a valid model id")
         
         download_model(self.model_id, self.model_path)
-
+        log.info(f"Zixian: Returned from download_model")
+        
+        
         self.device = device if torch.cuda.is_available() else "cpu"
         self.device_num = int(device[-1]) \
             if (device != "cuda" and device != "cpu") else -1
@@ -154,11 +156,13 @@ class BackendMIGraphX(backend.Backend):
         tknz_path2 = os.path.join(self.model_path, "tokenizer_2")
         # self.scheduler = EulerDiscreteScheduler.from_pretrained(os.path.join(self.model_path, "scheduler"))
         self.scheduler = EulerDiscreteScheduler.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="scheduler")
+        log.info(f"Zixian: Loaded scheduler")
         self.pipe = self.Pipe()
         # self.pipe.tokenizer = CLIPTokenizer.from_pretrained(tknz_path1)
         # self.pipe.tokenizer_2 = CLIPTokenizer.from_pretrained(tknz_path2)
         self.pipe.tokenizer = CLIPTokenizer.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="tokenizer")
         self.pipe.tokenizer_2 = CLIPTokenizer.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="tokenizer_2")
+        log.info(f"Zixian: Loaded tokenizer & tokenizer2")
         # log.info(f"Zixian_in_the_log tknz_path1: {tknz_path1}")
         # log.info(f"Zixian_in_the_log tknz_path2: {tknz_path2}")
         # self.decoder1 = Decoder(os.path.join(self.model_path, "tokenizer/vocab.json"))

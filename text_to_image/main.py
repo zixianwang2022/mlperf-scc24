@@ -363,6 +363,8 @@ def main():
                 ) 
                 for i in [0, 1, 2, 3]]
     
+    log.info(f"Zixian: Returned from get_backends")
+    
     
     if args.dtype == "fp16":
         dtype = torch.float16
