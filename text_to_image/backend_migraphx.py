@@ -146,7 +146,8 @@ class BackendMIGraphX(backend.Backend):
         self.mgx = None
         tknz_path1 = os.path.join(self.model_path, "tokenizer")
         tknz_path2 = os.path.join(self.model_path, "tokenizer_2")
-        self.scheduler = EulerDiscreteScheduler.from_pretrained(os.path.join(self.model_path, "scheduler"))
+        # self.scheduler = EulerDiscreteScheduler.from_pretrained(os.path.join(self.model_path, "scheduler"))
+        self.scheduler = EulerDiscreteScheduler.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="scheduler")
         self.pipe = self.Pipe()
         self.pipe.tokenizer = CLIPTokenizer.from_pretrained(tknz_path1)
         self.pipe.tokenizer_2 = CLIPTokenizer.from_pretrained(tknz_path2)
