@@ -676,11 +676,16 @@ class StableDiffusionMGX():
                        force_compile=False,
                        exhaustive_tune=False,
                        offload_copy=True):
+        
+        log.info(f"Zixian: inside load_mgx_model")
         print(f"Loading {name} model...")
+        
         if compiled_model_path is None:
             compiled_model_path = onnx_model_path
         onnx_file = f"{onnx_model_path}/{name}/model.onnx"
         mxr_file = f"{compiled_model_path}/{name}/model_{'fp16' if use_fp16 else 'fp32'}_{'gpu' if not offload_copy else 'oc'}.mxr"
+        log.info(f"Zixian: mxr_file: {mxr_file}")
+        
         if not force_compile and os.path.isfile(mxr_file):
             print(f"Found mxr, loading it from {mxr_file}")
             model = mgx.load(mxr_file, format="msgpack")
@@ -691,6 +696,8 @@ class StableDiffusionMGX():
             if use_fp16:
                 print(f"[IMPORTANT] Unet quantizing to FP16...")
                 mgx.quantize_fp16(model)
+                
+            
             model.compile(mgx.get_target("gpu"),
                           exhaustive_tune=exhaustive_tune,
                           offload_copy=offload_copy)
@@ -698,6 +705,7 @@ class StableDiffusionMGX():
             os.makedirs(os.path.dirname(mxr_file), exist_ok=True)
             mgx.save(model, mxr_file, format="msgpack")
         else:
+            log.info(f"Zixian: no model found")
             print(
                 f"No {name} model found at {onnx_file} or {mxr_file}. Please download it and re-try."
             )

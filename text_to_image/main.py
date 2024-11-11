@@ -382,6 +382,7 @@ def main():
 
     # load model to backend
     # model = backend.load()
+    log.info(f"Zixian: entering backend.load")
     # Zixian: Oct 21: create a list of models corresponding to each backend 
     models = [backend.load() for backend in backends]
     log.info(f"Zixian: loaded models from all backend")
