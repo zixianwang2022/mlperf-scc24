@@ -384,6 +384,7 @@ def main():
     # model = backend.load()
     # Zixian: Oct 21: create a list of models corresponding to each backend 
     models = [backend.load() for backend in backends]
+    log.info(f"Zixian: loaded models from all backend")
 
     # dataset to use
     dataset_class, pre_proc, post_proc, kwargs = SUPPORTED_DATASETS[args.dataset]

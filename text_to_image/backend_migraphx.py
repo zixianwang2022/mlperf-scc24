@@ -63,7 +63,7 @@ def download_model(repo_id, model_path):
         except Exception as e:
             log.error(f"Failed to download {file_name}: {e}")
             
-        log.info(f"Zixian_in_the_log: Downloaded {file_name} to {local_file_path}")
+        print (f"Zixian_in_the_log: Downloaded {file_name} to {local_file_path}")
 
 #! Yalu Ouyang [Nov 10 2024] Keep this in case we aren't allowed to modify coco.py
 # class Decoder:

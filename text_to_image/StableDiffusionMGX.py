@@ -401,7 +401,7 @@ class StableDiffusionMGX():
             StableDiffusionMGX.load_mgx_model(
                 model_names[pipeline_type]["vae"],
                 model_shapes["vae"],
-                onnx_model_path,
+                os.path.join (onnx_model_path, 'vae_decoder_fp16_fix'),
                 compiled_model_path=compiled_model_path,
                 use_fp16="vae" in fp16,
                 force_compile=force_compile,
@@ -411,7 +411,7 @@ class StableDiffusionMGX():
             StableDiffusionMGX.load_mgx_model(
                 model_names[pipeline_type]["clip"],
                 model_shapes["clip"],
-                onnx_model_path,
+                os.path.join (onnx_model_path, 'text_encoder'),
                 compiled_model_path=compiled_model_path,
                 use_fp16="clip" in fp16,
                 force_compile=force_compile,
@@ -421,7 +421,7 @@ class StableDiffusionMGX():
             StableDiffusionMGX.load_mgx_model(
                 model_names[pipeline_type]["clip2"],
                 model_shapes["clip2"],
-                onnx_model_path,
+                os.path.join (onnx_model_path, 'text_encoder_2'),
                 compiled_model_path=compiled_model_path,
                 use_fp16="clip2" in fp16,
                 force_compile=force_compile,
@@ -431,7 +431,7 @@ class StableDiffusionMGX():
             StableDiffusionMGX.load_mgx_model(
                 model_names[pipeline_type]["unetxl"],
                 model_shapes["unetxl"],
-                onnx_model_path,
+                os.path.join (onnx_model_path, 'unet'),
                 compiled_model_path=compiled_model_path,
                 use_fp16="unetxl" in fp16,
                 force_compile=force_compile,
