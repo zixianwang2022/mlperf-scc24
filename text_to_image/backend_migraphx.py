@@ -35,11 +35,12 @@ file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
 
 def download_model(repo_id, model_path):    
-    if os.path.exists(model_path):
-        log.info(f"MGX models already exists at {model_path}")
-        return
-    else:
-        os.makedirs(model_path, exist_ok=True)
+    # Zixian: Nov 10: Comment this out because model_path is current dir. 
+    # if os.path.exists(model_path):
+    #     log.info(f"MGX models already exists at {model_path}")
+    #     return
+    # else:
+    #     os.makedirs(model_path, exist_ok=True)
     
     repo_files = list_repo_files(repo_id)
     
@@ -61,6 +62,8 @@ def download_model(repo_id, model_path):
             log.info(f"Downloaded {file_name} to {local_file_path}")
         except Exception as e:
             log.error(f"Failed to download {file_name}: {e}")
+            
+        log.info(f"Zixian_in_the_log: Downloaded {file_name} to {local_file_path}")
 
 #! Yalu Ouyang [Nov 10 2024] Keep this in case we aren't allowed to modify coco.py
 # class Decoder:
@@ -107,7 +110,9 @@ class BackendMIGraphX(backend.Backend):
         negative_prompt="normal quality, low quality, worst quality, low res, blurry, nsfw, nude",
     ):
         super(BackendMIGraphX, self).__init__()
-        self.model_path = model_path
+        # Zixian: Nov 10: Hard code to set model_path to current dir 
+        # self.model_path = model_path
+        self.model_path = os.getcwd()
         if self.model_path is None:            
             raise SystemExit("Provide a valid Model Path to correctly run the program, exiting now...")
         
@@ -151,6 +156,8 @@ class BackendMIGraphX(backend.Backend):
         self.pipe = self.Pipe()
         self.pipe.tokenizer = CLIPTokenizer.from_pretrained(tknz_path1)
         self.pipe.tokenizer_2 = CLIPTokenizer.from_pretrained(tknz_path2)
+        log.info(f"Zixian_in_the_log tknz_path1: {tknz_path1}")
+        log.info(f"Zixian_in_the_log tknz_path2: {tknz_path2}")
         # self.decoder1 = Decoder(os.path.join(self.model_path, "tokenizer/vocab.json"))
         # self.decoder2 = Decoder(os.path.join(self.model_path, "tokenizer_2/vocab.json"))
         self.tokenizers = [self.pipe.tokenizer, self.pipe.tokenizer_2]
