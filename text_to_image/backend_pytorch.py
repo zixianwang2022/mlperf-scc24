@@ -7,13 +7,13 @@ import backend
 from transformers import CLIPTextModel, CLIPTokenizer, CLIPTextModelWithProjection
 from diffusers import AutoencoderKL, UNet2DConditionModel, PNDMScheduler, StableDiffusionXLPipeline, EulerDiscreteScheduler
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 log = logging.getLogger("backend-pytorch")
 
 
 formatter = logging.Formatter("{levelname} - {message}", style="{")
 file_handler = logging.FileHandler("backend.log", mode="a", encoding="utf-8")
-file_handler.setLevel("WARNING")
+file_handler.setLevel("INFO")
 file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
 
@@ -108,7 +108,6 @@ class BackendPytorch(backend.Backend):
             )
         
         self.pipe.to(self.device)
-        #! compiling the cores together cause mysterious issues further down the line w/ `max-autotune`
         # self.pipe.unet = torch.compile(self.pipe.unet, mode="reduce-overhead", fullgraph=True)
         # self.pipe.vae.decode = torch.compile(self.pipe.vae.decode, mode="reduce-overhead", fullgraph=True)
         
@@ -465,6 +464,7 @@ class BackendPytorch(backend.Backend):
                     pooled_prompt_embeds,
                     negative_pooled_prompt_embeds,
                 ) = self.prepare_inputs(inputs, i)
+
                 generated = self.pipe(
                     prompt_embeds=prompt_embeds,
                     negative_prompt_embeds=negative_prompt_embeds,

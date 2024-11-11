@@ -24,6 +24,9 @@ import torch
 import dataset
 import coco
 
+# import torchvision.transforms as T
+# transform_im = T.ToPILImage()
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logging.basicConfig(level=logging.INFO)
@@ -63,7 +66,7 @@ SUPPORTED_PROFILES = {
         "backend": "pytorch-dist",
         "model-name": "stable-diffusion-xl",
     },
-    # ? Yalu Ouyang modification: Nov 16 2024
+    # ? Yalu Ouyang modification: Oct 16 2024
     "stable-diffusion-xl-mgx": {
         "dataset": "coco-1024",
         "backend": "migraphx",
@@ -81,14 +84,19 @@ SCENARIO_MAP = {
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", choices=SUPPORTED_DATASETS.keys(), help="dataset")
-    parser.add_argument("--dataset-path", required=True, help="path to the dataset")
+    parser.add_argument("--dataset", 
+                        default="coco-1024",
+                        choices=SUPPORTED_DATASETS.keys(), help="dataset")
+    parser.add_argument("--dataset-path", 
+                        default="coco2014",help="path to the dataset")
     parser.add_argument(
-        "--profile", choices=SUPPORTED_PROFILES.keys(), help="standard profiles"
+        "--profile", 
+        default="stable-diffusion-xl-mgx",
+        choices=SUPPORTED_PROFILES.keys(), help="standard profiles"
     )
     parser.add_argument(
         "--scenario",
-        default="SingleStream",
+        default="Offline",
         help="mlperf benchmark scenario, one of " + str(list(SCENARIO_MAP.keys())),
     )
     parser.add_argument(
@@ -108,11 +116,13 @@ def get_args():
     parser.add_argument("--model-name", help="Name of the model")
     parser.add_argument("--output", default="output", help="test results")
     parser.add_argument("--qps", type=int, help="target qps")
-    parser.add_argument("--model-path", help="Path to model weights")
+    parser.add_argument("--model-path", 
+        default="/work1/zixian/youyang1/models/sdxl-1.0-base",
+        help="Path to model weights")
 
     parser.add_argument(
         "--dtype",
-        default="fp32",
+        default="fp16",
         choices=["fp32", "fp16", "bf16"],
         help="dtype of the model",
     )
@@ -150,11 +160,11 @@ def get_args():
     parser.add_argument("--ids-path", help="Path to caption ids", default="tools/sample_ids.txt")
 
     # below will override mlperf rules compliant settings - don't use for official submission
-    parser.add_argument("--time", type=int, help="time to scan in seconds")
+    parser.add_argument("--time", type=int, help="time to scan in seconds", default=5)
     parser.add_argument("--count", type=int, help="dataset items to use")
     parser.add_argument("--debug", action="store_true", help="debug")
     parser.add_argument(
-        "--performance-sample-count", type=int, help="performance sample count", default=5000
+        "--performance-sample-count", type=int, help="performance sample count", default=10
     )
     parser.add_argument(
         "--max-latency", type=float, help="mlperf max latency in pct tile"
@@ -241,15 +251,17 @@ class RunnerBase:
         processed_results = []
         try:
             results = self.model.predict(qitem.inputs)
+            log.error("[Line 254] runs fine after results")
             processed_results = self.post_process(
                 results, qitem.content_id, qitem.inputs, self.result_dict
             )
+            log.error("[Line 258] runs fine after processed_results")
             if self.take_accuracy:
                 self.post_process.add_results(processed_results)
             self.result_timing.append(time.time() - qitem.start)
         except Exception as ex:  # pylint: disable=broad-except
             src = [self.ds.get_item_loc(i) for i in qitem.content_id]
-            log.error("thread: failed on contentid=%s, %s", src, ex)
+            log.error("[Line 262] thread: failed on contentid=%s, %s", src, ex)
             # since post_process will not run, fake empty responses
             processed_results = [[]] * len(qitem.query_id)
         finally:
@@ -381,12 +393,12 @@ def main():
         threads=args.threads,
         # pipe_tokenizer=model.pipe.tokenizer,
         # pipe_tokenizer_2=model.pipe.tokenizer_2,
-        # ! Yalu Ouyang (Nov 6 2024) : Modified for MGX backend
-        pipe_tokenizer=models[0].tokenizer,
-        pipe_tokenizer_2=models[0].tokenizer_2,
+        pipe_tokenizer=models[0].pipe.tokenizer,
+        pipe_tokenizer_2=models[0].pipe.tokenizer_2,
         latent_dtype=dtype,
         latent_device=args.device,
         latent_framework=args.latent_framework,
+        pipe_type=args.backend,
         **kwargs,
     )
     final_results = {
@@ -438,22 +450,21 @@ def main():
     #     for _ in range(args.max_batchsize)
     # ]
     warmup_samples_gpus = [
-                    [
-                        # ! Yalu Ouyang (Nov 16 2024): Also changed for mgx backend
-                        {
-                            "input_tokens": ds.preprocess(syntetic_str, model.tokenizer),
-                            "input_tokens_2": ds.preprocess(syntetic_str, model.tokenizer_2),
-                            "latents": latents_pt,
-                        }
-                        for _ in range(int(args.max_batchsize))
-                    ]
-                    for model in models]
+        [
+            {
+                "input_tokens": ds.preprocess(syntetic_str, model.pipe.tokenizer),
+                "input_tokens_2": ds.preprocess(syntetic_str, model.pipe.tokenizer_2),
+                "caption": syntetic_str,
+                "latents": latents_pt
+            }
+            for _ in range(int(args.max_batchsize))
+        ]
+        for model in models]
     
     # Zixian: Oct 21: warm up each backend 
     for idx, backend in enumerate (backends): 
         for i in range(3):
             _ = backend.predict(warmup_samples_gpus[idx])
-
 
     scenario = SCENARIO_MAP[args.scenario]
     runner_map = {
@@ -485,10 +496,13 @@ def main():
             log.info (f'idx: {idx}')
             log.info (f'query_samples_len: {query_samples_len}')
             log.info (f'idx: {idx}')
-            if idx == len (runners) -1: 
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
-            else:
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
+            # if idx == len (runners) -1: 
+            #     splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
+            # else:
+            #     splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
+            
+            splitted_query_samples.append (query_samples [int(round(query_samples_seg_len * idx)): int(round(query_samples_seg_len * (idx + 1)))])
+                        
         
         with ThreadPoolExecutor(max_workers=len(runners)) as executor:
             # Map each runner to its respective sublist
@@ -554,6 +568,7 @@ def main():
         else min(count, 500)
     )
     sut = lg.ConstructSUT(issue_queries, flush_queries)
+    #! [Yalu Ouyang] count here affects how many items to run (even for accuracy)
     qsl = lg.ConstructQSL(
         count, performance_sample_count, ds.load_query_samples, ds.unload_query_samples
     )

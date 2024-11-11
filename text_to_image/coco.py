@@ -35,6 +35,7 @@ class Coco(dataset.Dataset):
         latent_dtype=torch.float32,
         latent_device="cuda",
         latent_framework="torch",
+        pipe_type=None, #! Yalu Ouyang [Nov 10 2024]: added pipe type for Coco (default None)
         **kwargs,
     ):
         super().__init__()
@@ -65,6 +66,9 @@ class Coco(dataset.Dataset):
                 .to(latent_dtype)
                 .to(latent_device)
             )
+            
+        #! Yalu Ouyang [Nov 10 2024]: added pipe type for Coco (default None)
+        self.pipe_type = pipe_type
 
     def preprocess(self, prompt, tokenizer):
         converted_prompt = self.convert_prompt(prompt, tokenizer)
@@ -111,6 +115,29 @@ class Coco(dataset.Dataset):
 
     def get_item(self, id):
         return dict(self.captions_df.loc[id], latents=self.latents)
+    
+    #! Yalu Ouyang [Nov 10 2024] Overrides parent Dataset class, default behavior is same though
+    def get_samples(self, id_list):
+        if self.pipe_type == "migraphx":
+            #! Yalu Ouyang [Nov 10 2024] MGX backend just needs text prompt
+            data = [
+                {
+                    "caption": self.items_inmemory[id]["caption"],
+                    "latents": self.items_inmemory[id]["latents"],
+                }
+                for id in id_list
+            ]
+        else:
+            data = [
+                {
+                    "input_tokens": self.items_inmemory[id]["input_tokens"],
+                    "input_tokens_2": self.items_inmemory[id]["input_tokens_2"],
+                    "latents": self.items_inmemory[id]["latents"],
+                }
+                for id in id_list
+            ]
+        images = [self.items_inmemory[id]["file_name"] for id in id_list]
+        return data, images
 
     def get_item_count(self):
         return len(self.captions_df)

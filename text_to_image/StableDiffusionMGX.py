@@ -26,15 +26,29 @@ from transformers import CLIPTokenizer
 from PIL import Image
 
 import migraphx as mgx
+from functools import wraps
+from tqdm import tqdm
+from hip import hip
+from collections import namedtuple
+
 import os
 import sys
 import torch
 import time
-from functools import wraps
-from tqdm import tqdm
+import logging
+import coco
+import dataset
 
-from hip import hip
-from collections import namedtuple
+logging.basicConfig(level=logging.ERROR)
+log = logging.getLogger("mgx-base")
+
+formatter = logging.Formatter("{levelname} - {message}", style="{")
+file_handler = logging.FileHandler("mgx.log", mode="a", encoding="utf-8")
+file_handler.setLevel("INFO")
+file_handler.setFormatter(formatter)
+log.addHandler(file_handler)
+
+
 
 HipEventPair = namedtuple('HipEventPair', ['start', 'end'])
 
@@ -141,14 +155,14 @@ def get_args():
         "-t",
         "--steps",
         type=int,
-        default=30,
+        default=20,
         help="Number of steps",
     )
 
     parser.add_argument(
         "--refiner-steps",
         type=int,
-        default=30,
+        default=20,
         help="Number of refiner steps",
     )
 
@@ -156,7 +170,7 @@ def get_args():
         "-p",
         "--prompt",
         type=str,
-        required=True,
+        # required=True,
         help="Prompt",
     )
 
@@ -332,7 +346,7 @@ class StableDiffusionMGX():
     def __init__(self, pipeline_type, onnx_model_path, compiled_model_path,
                  use_refiner, refiner_onnx_model_path,
                  refiner_compiled_model_path, fp16, force_compile,
-                 exhaustive_tune, tokenizers):
+                 exhaustive_tune, tokenizers=None, scheduler=None):
         if not (onnx_model_path or compiled_model_path):
             onnx_model_path = default_model_paths[pipeline_type]
 
@@ -350,18 +364,25 @@ class StableDiffusionMGX():
         model_id = "stabilityai/sdxl-turbo" if is_turbo else "stabilityai/stable-diffusion-xl-base-1.0"
         print(f"Using {model_id}")
 
-        print("Creating EulerDiscreteScheduler scheduler")
-        self.scheduler = EulerDiscreteScheduler.from_pretrained(
-            model_id, subfolder="scheduler")
+        if scheduler is None:
+            print("Creating EulerDiscreteScheduler scheduler")
+            self.scheduler = EulerDiscreteScheduler.from_pretrained(
+                model_id, subfolder="scheduler")
+        else:
+            self.scheduler = scheduler
 
         print("Creating CLIPTokenizer tokenizers...")
-        # self.tokenizers = {
-        #     "clip":
-        #     CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer"),
-        #     "clip2":
-        #     CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer_2")
-        # }
-        self.tokenizers = tokenizers
+        if tokenizers is None:
+            tknz_path1 = os.path.join(onnx_model_path, "tokenizer")
+            tknz_path2 = os.path.join(onnx_model_path, "tokenizer_2")
+            self.tokenizers = {
+                "clip":
+                CLIPTokenizer.from_pretrained(tknz_path1),
+                "clip2":
+                CLIPTokenizer.from_pretrained(tknz_path2)
+            }
+        else:
+            self.tokenizers = tokenizers
 
         if fp16 is None:
             fp16 = []
@@ -501,15 +522,16 @@ class StableDiffusionMGX():
     @torch.no_grad()
     def run(self,
             prompt,
-            negative_prompt,
-            steps,
-            seed,
-            scale,
-            refiner_steps,
-            refiner_aesthetic_score,
-            refiner_negative_aesthetic_score,
+            steps=20,
+            negative_prompt="normal quality, low quality, worst quality, low res, blurry, nsfw, nude",
+            seed=42,
+            scale=5.0,
+            refiner_steps=20,
+            refiner_aesthetic_score=6.0,
+            refiner_negative_aesthetic_score=2.5,
             verbose=False,
             prompt_tokens=None,
+            latents_in=None,
             device="cuda"):
         torch.cuda.synchronize()
         self.profile_start("run")
@@ -518,41 +540,60 @@ class StableDiffusionMGX():
 
         if verbose:
             print("Tokenizing prompts...")
+            
         if prompt_tokens is not None:
             prompt_tokens = prompt_tokens
         else:
+            # log.info(f"[mgx] input prompt: {prompt}")
             prompt_tokens = self.tokenize(prompt, negative_prompt)
+            # log.info(f"[mgx] clip token: {prompt_tokens[0]['input_ids']}")
+            # log.info(f"[mgx] clip2 token: {prompt_tokens[1]['input_ids']}")
+            
+            # raise SystemExit("Checking if tokens match")
 
         if verbose:
             print("Creating text embeddings...")
         self.profile_start("clip")
-        hidden_states, text_embeddings = self.get_embeddings(prompt_tokens)
+        hidden_states, text_embeddings = self.get_embeddings(prompt_tokens)        
+        # log.info(f"[mgx] hidden_states (shape {hidden_states.shape}): {hidden_states}")
+        # log.info(f"[mgx] text_embeddings (shape {text_embeddings.shape}): {text_embeddings}")
+        # log.info(f"------DIVIDER--------")
         self.profile_end("clip")
         sample_size = list(self.tensors["vae"]["latent_sample"].size())
         if verbose:
             print(
                 f"Creating random input data {sample_size} (latents) with {seed = }..."
             )
-        noise = torch.randn(
-            sample_size, generator=torch.manual_seed(seed)).to(device=device)
-        # input h/w crop h/w output h/w
+        
         height, width = sample_size[2:]
         time_id = [height * 8, width * 8, 0, 0, height * 8, width * 8]
         time_ids = torch.tensor([time_id, time_id]).to(device=device)
-
-        if verbose:
-            print("Apply initial noise sigma\n")
         
-        # print(f"noise.device -> {noise.device}")
-        # print(f"self.scheduler.init_noise_sigma.device -> {self.scheduler.init_noise_sigma.device}")
-        latents = noise * self.scheduler.init_noise_sigma
+        if latents_in is None:
+            noise = torch.randn(
+                sample_size, generator=torch.manual_seed(seed)).to(device=device)
+            # input h/w crop h/w output h/w
+
+            if verbose:
+                print("Apply initial noise sigma\n")
+            
+            # print(f"noise.device -> {noise.device}")
+            # print(f"self.scheduler.init_noise_sigma.device -> {self.scheduler.init_noise_sigma.device}")
+            latents = noise * self.scheduler.init_noise_sigma
+        else:
+            
+            if verbose:
+                print("Apply initial noise sigma\n")
+            
+            # log.info(f"[MGX] input latents provided, no need to generate")
+            latents = latents_in * self.scheduler.init_noise_sigma
 
         if verbose:
             print("Running denoising loop...")
         self.profile_start("denoise")
         for step, t in tqdm(enumerate(self.scheduler.timesteps), 
                     total=len(self.scheduler.timesteps), 
-                    desc="Denoising Steps", 
+                    desc=f"Device {device} Denoising", 
                     ncols=100, 
                     leave=True):
             if verbose:
@@ -761,40 +802,38 @@ class StableDiffusionMGX():
 if __name__ == "__main__":
     args = get_args()
 
-    sd = StableDiffusionMGX(args.pipeline_type, args.onnx_model_path,
-                            args.compiled_model_path, args.use_refiner,
-                            args.refiner_onnx_model_path,
-                            args.refiner_compiled_model_path, args.fp16,
-                            args.force_compile, args.exhaustive_tune)
+    # sd = StableDiffusionMGX(args.pipeline_type, args.onnx_model_path,
+    #                         args.compiled_model_path, args.use_refiner,
+    #                         args.refiner_onnx_model_path,
+    #                         args.refiner_compiled_model_path, args.fp16,
+    #                         args.force_compile, args.exhaustive_tune)
+    
+    sd = StableDiffusionMGX("sdxl", onnx_model_path=args.onnx_model_path,
+                            compiled_model_path=None, use_refiner=False,
+                            refiner_onnx_model_path=None,
+                            refiner_compiled_model_path=None, fp16=args.fp16,
+                            force_compile=False, exhaustive_tune=True)
     print("Warmup")
     sd.warmup(5)
     print("Run")
-    # result = sd.run(args.prompt, args.negative_prompt, args.steps, args.seed,
-                    # args.scale, args.refiner_steps,
-                    # args.refiner_aesthetic_score,
-                    # args.refiner_negative_aesthetic_score, args.verbose)
-# 
-    # print("Summary")
-    # sd.print_summary(args.steps)
-    # print("Cleanup")
-    # sd.cleanup()
-# 
-    # print("Convert result to rgb image...")
-    # image = StableDiffusionMGX.convert_to_rgb_image(result)
-    # filename = args.output if args.output else f"output_s{args.seed}_t{args.steps}.png"
-    # StableDiffusionMGX.save_image(image, filename)
-    # print(f"Image saved to {filename}")
+
     prompt_list = []
-    prompt_list.append(["Astronaut in a jungle, cold color palette, muted colors, detailed, 8k", "jungle_astro.jpg"])
-    prompt_list.append(["Astronaut on mars, cold color palette, muted colors, detailed, 8k", "mars_astro.jpg"])
+    prompt_list.append(["A young man in a white shirt is playing tennis.", "tennis.jpg"])
+    # prompt_list.append(["Lorem ipsum dolor sit amet, consectetur adipiscing elit", "woman.jpg"])
     prompt_list.append(["Astronaut crashlanding in Madison Square Garden, cold color palette, muted colors, detailed, 8k", "crash_astro.jpg"])
-    prompt_list.append(["John Cena giving The Rock an Attitude Adjustment off the roof, warm color palette, vivid colors, detailed, 8k", "cena_rock.jpg"])
+    # prompt_list.append(["John Cena giving The Rock an Attitude Adjustment off the roof, warm color palette, vivid colors, detailed, 8k", "cena_rock.jpg"])
+
     for element in prompt_list:
         prompt, img_name = element[0], element[1]
-        result = sd.run(prompt, args.negative_prompt, args.steps, args.seed,
-                args.scale, args.refiner_steps,
-                args.refiner_aesthetic_score,
-                args.refiner_negative_aesthetic_score, args.verbose)
+        # result = sd.run(prompt, args.negative_prompt, args.steps, args.seed,
+        #         args.scale, args.refiner_steps,
+        #         args.refiner_aesthetic_score,
+        #         args.refiner_negative_aesthetic_score, args.verbose)
+        
+        result = sd.run(prompt=prompt, steps=20, seed=args.seed,
+                scale=5.0, refiner_steps=0,
+                refiner_aesthetic_score=0.0,
+                refiner_negative_aesthetic_score=0.0, verbose=False)
 
         print("Summary")
         sd.print_summary(args.steps)        

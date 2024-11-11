@@ -3,7 +3,9 @@
 - CLIP higher is better
 - FID lower is better
 
-## Accuracy results: w/ default safetensor models
+## Accuracy results
+
+### default safetensor models
 
 ```json
 "accuracy_results": {
@@ -11,6 +13,12 @@
         "FID_SCORE": 137.89080923108685,
         "scenario": "TestScenario.Offline"
     },
+
+Fastest attempt:
+- batch = 1
+- total sample = 32
+
+Samples per second: 0.736967
 ```
 
 ## w/ quantized unet and vae
@@ -24,24 +32,51 @@
 
 Fastest attempt: Samples per second -> 0.667284
 ```
-## w/ migraphx
 
-Accuracy results: (much worse accuracy)
+### (MIGraphX) quantized unet
+
+1. guidance = 5
+2. w/ exhaustive-tune = True
+
+(still terrible, but the images actually look fine)
 
 ```json
 "accuracy_results": {
-    "CLIP_SCORE": 17.581279400736094,
-    "FID_SCORE": 371.37723025970547,
+    "CLIP_SCORE": 26.513378769159317,
+    "FID_SCORE": 354.6436180397586,
     "scenario": "TestScenario.Offline"
 },
+Fastest Attempt:
+- batch = 1
 
-w/ guidance = 5 (still terrible)
-"accuracy_results": {
-    "CLIP_SCORE": 17.48733188211918,
-    "FID_SCORE": 375.5336307825502,
-    "scenario": "TestScenario.Offline"
-},
-
-w/ exhaustive-tune = True
-Fastest Attempt -> Samples per second: 0.900466
+Samples per second: 0.900466
 ```
+
+### (MIGraphX) default unet.onnx ()
+
+1. **mxr** file 8.97 GB
+2. guidance = 5
+3. `exhaustive-tune = True`
+
+(The images look pretty good, and speed is not much slower than above)
+
+```json
+"accuracy_results": {
+    "CLIP_SCORE": 31.36642027646303,
+    "FID_SCORE": 144.55152561706387,
+    "scenario": "TestScenario.Offline"
+},
+
+Fastest Attempt:
+- batch = 1
+- total sample = 32
+
+Samples per second: 0.893562
+```
+
+
+## Trying to identify issues with MGX
+
+1. The input **tokens** and **input_tokens_2** are the same, same shape and values.
+
+2. Trying to see if the embeddings are different (embeds are of type `<class 'torch.Tensor'>`)

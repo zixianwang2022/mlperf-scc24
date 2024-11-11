@@ -8,28 +8,91 @@ import sys
 import backend
 import time
 import random
+import json
+import re
 
 from hip import hip
 from PIL import Image
 from functools import wraps
 from collections import namedtuple
-from transformers import CLIPTokenizer, CLIPTextModelWithProjection
+from transformers import CLIPTokenizer, CLIPTextModelWithProjection, CLIPProcessor, CLIPFeatureExtractor
 from diffusers import StableDiffusionXLPipeline, EulerDiscreteScheduler
 from argparse import ArgumentParser
 from StableDiffusionMGX import StableDiffusionMGX
-
+from huggingface_hub import hf_hub_download, list_repo_files
+import numpy as np
 
 HipEventPair = namedtuple('HipEventPair', ['start', 'end'])
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("backend-pytorch")
+logging.basicConfig(level=logging.ERROR)
+log = logging.getLogger("backend-mgx")
 
 
 formatter = logging.Formatter("{levelname} - {message}", style="{")
-file_handler = logging.FileHandler("backend.log", mode="a", encoding="utf-8")
-file_handler.setLevel("WARNING")
+file_handler = logging.FileHandler("backend_mgx.log", mode="a", encoding="utf-8")
+file_handler.setLevel("INFO")
 file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
+
+def download_model(repo_id, model_path):    
+    if os.path.exists(model_path):
+        log.info(f"MGX models already exists at {model_path}")
+        return
+    else:
+        os.makedirs(model_path, exist_ok=True)
+    
+    repo_files = list_repo_files(repo_id)
+    
+    files_to_download = [
+        file for file in repo_files
+        if not file.endswith(".onnx") and not file.endswith("model_fp32_gpu.mxr")
+    ]
+    
+    for file_name in files_to_download:
+        local_file_path = os.path.join(model_path, file_name)
+        local_folder = os.path.dirname(local_file_path)
+
+        # Create directory structure if it does not exist
+        os.makedirs(local_folder, exist_ok=True)
+
+        # Download the file to the specific path
+        try:
+            hf_hub_download(repo_id=repo_id, filename=file_name, cache_dir=local_folder, local_dir=local_folder, local_dir_use_symlinks=False)
+            log.info(f"Downloaded {file_name} to {local_file_path}")
+        except Exception as e:
+            log.error(f"Failed to download {file_name}: {e}")
+
+#! Yalu Ouyang [Nov 10 2024] Keep this in case we aren't allowed to modify coco.py
+# class Decoder:
+#     def __init__(self, vocab_path):
+#         # Load the vocabulary with UTF-8 encoding to support non-ASCII characters
+#         with open(vocab_path, "r", encoding="utf-8") as f:
+#             vocab = json.load(f)
+        
+#         # Reverse the mapping: token_id -> word
+#         self.id_to_word = {int(id_): word for word, id_ in vocab.items()}
+    
+#     def decode_tokens(self, token_ids):
+#         # Ensure token_ids is a list, even if a tensor is passed
+#         if isinstance(token_ids, torch.Tensor):
+#             token_ids = token_ids.tolist()
+        
+#         # Handle both single sequences and batches
+#         if isinstance(token_ids[0], list):  # Batch of sequences
+#             decoded_texts = [self._decode_sequence(sequence) for sequence in token_ids]
+#             return decoded_texts
+#         else:  # Single sequence
+#             return self._decode_sequence(token_ids)
+    
+#     def _decode_sequence(self, token_ids):
+#         # Convert token IDs to words, handling any unknown tokens
+#         words = [self.id_to_word.get(token_id, "[UNK]") for token_id in token_ids]
+        
+#         # Remove special tokens and `</w>` markers
+#         text = " ".join(words)
+#         text = re.sub(r"(<\|startoftext\|>|<\|endoftext\|>)", "", text)  # Remove special tokens
+#         text = text.replace("</w>", "").strip()  # Remove `</w>` markers and extra whitespace
+#         return text
 
 class BackendMIGraphX(backend.Backend):
     def __init__(
@@ -45,12 +108,17 @@ class BackendMIGraphX(backend.Backend):
     ):
         super(BackendMIGraphX, self).__init__()
         self.model_path = model_path
+        if self.model_path is None:            
+            raise SystemExit("Provide a valid Model Path to correctly run the program, exiting now...")
+        
         self.pipeline_type = None
         if model_id == "xl":
-            self.model_id = "stabilityai/stable-diffusion-xl-base-1.0"
+            self.model_id = "SeaSponge/scc24_mlperf_mgx_exhaustive"
             self.pipeline_type = "sdxl"
         else:
             raise ValueError(f"{model_id} is not a valid model id")
+        
+        download_model(self.model_id, self.model_path)
 
         self.device = device if torch.cuda.is_available() else "cpu"
         self.device_num = int(device[-1]) \
@@ -78,13 +146,19 @@ class BackendMIGraphX(backend.Backend):
         self.mgx = None
         tknz_path1 = os.path.join(self.model_path, "tokenizer")
         tknz_path2 = os.path.join(self.model_path, "tokenizer_2")
-        self.tokenizer = CLIPTokenizer.from_pretrained(tknz_path1)
-        self.tokenizer_2 = CLIPTokenizer.from_pretrained(tknz_path2)
-        self.text_encoder = None
-        self.text_encoder_2 = None
-        self.unet = None
-        self.vae = None
+        self.scheduler = EulerDiscreteScheduler.from_pretrained(os.path.join(self.model_path, "scheduler"))
+        self.pipe = self.Pipe()
+        self.pipe.tokenizer = CLIPTokenizer.from_pretrained(tknz_path1)
+        self.pipe.tokenizer_2 = CLIPTokenizer.from_pretrained(tknz_path2)
+        # self.decoder1 = Decoder(os.path.join(self.model_path, "tokenizer/vocab.json"))
+        # self.decoder2 = Decoder(os.path.join(self.model_path, "tokenizer_2/vocab.json"))
+        self.tokenizers = [self.pipe.tokenizer, self.pipe.tokenizer_2]
 
+    class Pipe:
+        def __init__(self):
+            self.tokenizer = None
+            self.tokenizer_2 = None
+        
     def version(self):
         return torch.__version__
 
@@ -125,13 +199,16 @@ class BackendMIGraphX(backend.Backend):
             # Use exhaustive tune when compilling .onnx -> .mxr
             exhaustive_tune = True
             
-            tokenizers = {"clip": self.tokenizer, "clip2": self.tokenizer_2}
+            tokenizers = {"clip": self.tokenizers[0], "clip2": self.tokenizers[1]}
             
             self.mgx = StableDiffusionMGX(self.pipeline_type, onnx_model_path=self.model_path,
                 compiled_model_path=None, use_refiner=use_refiner,
                 refiner_onnx_model_path=None,
                 refiner_compiled_model_path=None, fp16=fp16,
-                force_compile=force_compile, exhaustive_tune=exhaustive_tune, tokenizers=tokenizers)
+                force_compile=force_compile, exhaustive_tune=exhaustive_tune, tokenizers=tokenizers,
+                scheduler=self.scheduler)
+            
+            self.mgx.warmup(5)
             
         return self
     
@@ -149,45 +226,57 @@ class BackendMIGraphX(backend.Backend):
         # defaults to not verbose
         verbose = False
         #! The main pipeline from loadgen doesn't have text prompt, only tokens
-        # log.error(f"[mgx.predict()] inputs -> {inputs} | self.batch_size -> {self.batch_size}")
         
         for i in range(0, len(inputs), self.batch_size):
+            latents_input = [inputs[idx]["latents"] for idx in range(i, min(i+self.batch_size, len(inputs)))]
+            latents_input = torch.cat(latents_input).to(self.device)            
             if self.batch_size == 1:
-                prompt_token = inputs[i]["input_tokens"]
-                prompt_token2 = inputs[i]["input_tokens_2"]
+                # prompt_token = inputs[i]["input_tokens"]
+                # log.info(f"[mgx backend batchsz=1] inputs[i] -> {inputs[i]}")
+                prompt_in = inputs[i]["caption"]
+                log.error(f"[mgx backend] i -> {i} | prompt_in -> {prompt_in}")
                 seed = random.randint(0, 2**31 - 1)
-                result = self.mgx.run(prompt=None, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
+                
+                # prompt_in = self.decoder1.decode_tokens(prompt_token['input_ids'])
+                
+                result = self.mgx.run(prompt=prompt_in, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
                     scale=self.guidance, refiner_steps=0,
                     refiner_aesthetic_score=0,
                     refiner_negative_aesthetic_score=0, verbose=verbose,
-                    prompt_tokens=(prompt_token, prompt_token2), device=self.device)
+                    prompt_tokens=None, device=self.device, latents_in=latents_input)
                 
-                # generated = StableDiffusionMGX.convert_to_rgb_image(result)
+                # result shape = (3, 1024, 1024)
+                
+                # img_name = f"{self.device}_{random.randint(0, 1000)}.jpg"
+                # image = StableDiffusionMGX.convert_to_rgb_image(result)
+                # StableDiffusionMGX.save_image(image, img_name)
+                # log.info(f"[mgx backend batchsz=1] Image saved to {img_name}")
                 #! COCO needs this to be 3-dimensions
-                reshaped = result.reshape(3, 1024, 1024)
-                # self.mgx.print_summary(self.steps)
-                images.append(reshaped)
+                
+                new_res = (result / 2 + 0.5).clamp(0, 1)
+                
+                # log.info(f"[mgx backend] type result: {type(result)} | result shape: {result.shape}")
+                # log.info(f"[mgx backend] type new_res: {type(new_res)} | new_res shape: {new_res.shape}")
+                # log.info(f"------DIVIDER--------")
+                images.extend(new_res)
                 
             else:
                 prompt_list = []
                 for prompt in inputs[i:min(i+self.batch_size, len(inputs))]:
                     assert isinstance(prompt, dict), "prompt (in inputs) isn't a dict"
-                    prompt_token = prompt["input_tokens"]
-                    prompt_token2 = prompt["input_tokens_2"]
-                    prompt_list.append((prompt_token, prompt_token2))
+                    # prompt_token = prompt["input_tokens"]
+                    prompt_in = inputs[i]["caption"]
                     
                 
                 for prompt in prompt_list:
                     seed = random.randint(0, 2**31 - 1)
-                    result = self.mgx.run(prompt=None, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
+                    result = self.mgx.run(prompt=prompt, negative_prompt=self.negative_prompt, steps=self.steps, seed=seed,
                         scale=self.guidance, refiner_steps=0,
                         refiner_aesthetic_score=0,
                         refiner_negative_aesthetic_score=0, verbose=verbose,
-                        prompt_tokens=prompt, device=self.device)
+                        prompt_tokens=None, device=self.device, latents_in=latents_input)
 
-                    # generated = StableDiffusionMGX.convert_to_rgb_image(result)
-                    reshaped = result.reshape(3, 1024, 1024)
-                    self.mgx.print_summary(self.steps)
-                    images.append(reshaped)
+                    new_res = (result / 2 + 0.5).clamp(0, 1)
+                    images.extend(new_res)
 
         return images
