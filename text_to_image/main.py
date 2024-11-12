@@ -437,9 +437,26 @@ def main():
                     for model in models]
     
     # Zixian: Oct 21: warm up each backend 
-    for idx, backend in enumerate (backends): 
-        for i in range(1):
-            _ = backend.predict(warmup_samples_gpus[idx])
+    # for idx, backend in enumerate (backends): 
+    #     for i in range(1):
+    #         _ = backend.predict(warmup_samples_gpus[idx])
+    
+    print (f'Start distributed warmup')
+    with ThreadPoolExecutor(max_workers=len(backends)) as executor:
+            # Map each runner to its respective sublist
+            futures = {
+                executor.submit(backend.predict, queries): backend 
+                for backend, queries in zip(backends, warmup_samples_gpus)
+            }
+        
+            # Optionally process the results
+            for future in as_completed(futures):
+                backend = futures[future]
+                try:
+                    result = future.result()
+                    print(f'Warmup backend {backend} enqueued successfully.')
+                except Exception as exc:
+                    print(f'Warmup backend {backend} generated an exception: {exc}')
 
 
     scenario = SCENARIO_MAP[args.scenario]

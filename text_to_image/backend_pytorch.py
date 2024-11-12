@@ -363,6 +363,7 @@ class BackendPytorch(backend.Backend):
         images = []
         with torch.no_grad():
             for i in range(0, len(inputs), self.batch_size):
+                print (f'self.steps BEFORE pipe: {self.steps}')
                 latents_input = [inputs[idx]["latents"] for idx in range(i, min(i+self.batch_size, len(inputs)))]
                 latents_input = torch.cat(latents_input).to(self.device)
                 (
@@ -378,9 +379,11 @@ class BackendPytorch(backend.Backend):
                     negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
                     guidance_scale=self.guidance,
                     num_inference_steps=self.steps,
+                    # num_inference_steps=20,
                     output_type="pt",
                     latents=latents_input,
                 ).images
+                print (f'self.steps AFTER pipe: {self.steps}')
                 images.extend(generated)
         return images
 
