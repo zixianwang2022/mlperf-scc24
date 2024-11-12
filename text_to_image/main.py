@@ -153,6 +153,9 @@ def get_args():
     parser.add_argument(
         "--audit_conf", default="audit.config", help="config for LoadGen audit settings"
     )
+    parser.add_argument(
+        "--gpu-num", default=4, type=int, help="number of gpus to use"
+    )
     # arguments to save images
     # pass this argument for official submission
     # parser.add_argument("--output-images", action="store_true", help="Store a subset of the generated images")
@@ -359,14 +362,23 @@ def main():
     #     batch_size=args.max_batchsize
     # )
     # Zixian: Oct 21: create a list of backends for multi-gpu
+    # backends = [get_backend(
+    #                 args.backend,
+    #                 precision=args.dtype,
+    #                 device=f'cuda:{i}',
+    #                 model_path=args.model_path,
+    #                 batch_size=args.max_batchsize
+    #             ) 
+    #             for i in [0, 1, 2, 3]]
+    
     backends = [get_backend(
                     args.backend,
                     precision=args.dtype,
-                    device=f'cuda:{i}',
+                    device=f'cuda:{int (i/int (args.gpu_num / 4))}',
                     model_path=args.model_path,
                     batch_size=args.max_batchsize
                 ) 
-                for i in [0, 1, 2, 3]]
+                for i in np.arange (args.gpu_num)]
     
     log.info(f"Zixian: Returned from get_backends")
     
