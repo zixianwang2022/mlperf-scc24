@@ -251,11 +251,11 @@ class RunnerBase:
         processed_results = []
         try:
             results = self.model.predict(qitem.inputs)
-            log.error("[Line 254] runs fine after results")
+            log.info("[Line 254] runs fine after results")
             processed_results = self.post_process(
                 results, qitem.content_id, qitem.inputs, self.result_dict
             )
-            log.error("[Line 258] runs fine after processed_results")
+            log.info("[Line 258] runs fine after processed_results")
             if self.take_accuracy:
                 self.post_process.add_results(processed_results)
             self.result_timing.append(time.time() - qitem.start)
@@ -310,13 +310,17 @@ class QueueRunner(RunnerBase):
     def handle_tasks(self, tasks_queue):
         """Worker thread."""
         while True:
+            log.info ('getting tasks')
             qitem = tasks_queue.get()
+            log.info ('getten tasks')
             if qitem is None:
                 # None in the queue indicates the parent want us to exit
                 tasks_queue.task_done()
                 break
             self.run_one_item(qitem)
+            log.info ('going to task_done')
             tasks_queue.task_done()
+            log.info ('tasks done')
 
     def enqueue(self, query_samples):
         idx = [q.index for q in query_samples]
@@ -467,7 +471,7 @@ def main():
     
     # Zixian: Oct 21: warm up each backend 
     for idx, backend in enumerate (backends): 
-        for i in range(3):
+        for i in range(1):
             _ = backend.predict(warmup_samples_gpus[idx])
 
     scenario = SCENARIO_MAP[args.scenario]
@@ -493,7 +497,7 @@ def main():
         print (f'\n\n len (query_samples): {len (query_samples)} \n\n')
         
         query_samples_len = len (query_samples)
-        query_samples_seg_len = int (query_samples_len / len (runners))
+        query_samples_seg_len = query_samples_len / len (runners)
         splitted_query_samples = []
         for idx in range (len (runners)): 
             log.info (f'\n\n\n')
@@ -591,16 +595,20 @@ def main():
         
 
     lg.StartTestWithLogSettings(sut, qsl, settings, log_settings, audit_config)
+    
+    log.info("Loadgen finished tests")
 
     if args.accuracy:
         post_proc.finalize(result_dict, ds, output_dir=args.output)
         final_results["accuracy_results"] = result_dict
         post_proc.save_images(saved_images_ids, ds)
 
-
+    log.info("After processing accuracy")
 
     for runner in runners: 
         runner.finish()
+        
+    log.info("After runner.finish()") 
     # with ThreadPoolExecutor(max_workers=len(runners)) as executor:
     #         # Map each runner to its respective sublist
     #         futures = {
