@@ -5,7 +5,8 @@ generated/
 
 text_to_image/hip/
 text_to_image/coco2014/
-text_to_image/output/
+text_to_image/output/*
 
 *.log
 loadgen/
+
