@@ -263,7 +263,8 @@ class QDL:
                 splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
             else:
                 splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
-                
+        
+        responses = []
         with ThreadPoolExecutor(max_workers=len(self.sut_server_addr)) as executor:
             futures = { 
                 executor.submit(self.request_validate, '{}/predict/'.format(url), queries): self
@@ -271,15 +272,31 @@ class QDL:
             }
             
             for future in as_completed(futures):
-                pass
+                runner = futures[future]
+                try:
+                    result = future.result()
+                    responses.extend(result)
+                except Exception as exc:
+                    log.error(f'Runner {runner} generated an exception: {exc}')
                 
 
-    
+    # Send inference request to one host, receive the inference result
+    # then calls loadgen to verify the inference result
     def request_validate(self, url, query_samples):
         # turn query_samples into list of json: 
         indexes = [q.index for q in query_samples]
         ids = [q.id for q in query_samples]
         data, label = self.ds.get_samples(indexes)
+        
+        data = [
+            {
+                'input_tokens': d['input_tokens'],
+                'input_tokens_2': d['input_tokens_2'],
+                'latents': d['latents'].tolist()  # Convert tensor to a list
+            }
+            for d in data
+        ]
+        
         '''
         data[0]:
         {
@@ -289,16 +306,42 @@ class QDL:
         }
         '''
         
-        # Todo: Convert <class 'transformers.tokenization_utils_base.BatchEncoding'> object in data
-        #       into json or any format that can be sent by http.
+        # Todo: The response got None object when we have 2 inference nodes
+        # This problem doesn't exist when we just inference on one node
         
-        # Todo: receive sample from SUT, and call lg.QuerySamplesComplete()
-        
-        query_samples = {'index': indexes, 'id': ids, 'data': data}
+        query_samples = [ {'index': q[0], 'id': q[1], 'data': q[2]} 
+                         for q in zip(indexes, ids, data) ]
         response = requests.post(url, json={"query_samples": query_samples})
-        print(response.json()["result"])
+        # print(response.json()["result"])
+        
+        result = response.json()["result"]
+        # print("result type:", type(type(result)))
+        # print("result type:", type(result))
+        # print("result len:", len(result))
+        # print("result[0]:", result[0])
+        response_array_refs = []
+        response = []
+        for sample in result:
+            sample_in_memory = array.array("B", sample['data'])
+            bi = sample_in_memory.buffer_info()
+            response_array_refs.append(sample_in_memory)
+            response.append(lg.QuerySampleResponse(sample['query_id'], bi[0], bi[1]))
+        lg.QuerySamplesComplete(response)
+            
         
         
+        '''
+        query_samples[0]:
+        {
+            'index': 1, 
+            'id': 1, 
+            'data': {
+                'inputs_tokens': "this is a prompt",
+                'inputs_tokens_2': "this is a prompt",
+                'latents': [list converted from tensor]
+            }
+        }
+        '''
         
 
     def client_get_name(self):

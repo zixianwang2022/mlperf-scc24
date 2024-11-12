@@ -43,13 +43,18 @@ class Coco(dataset.Dataset):
         self.preprocessed_dir = os.path.abspath(f"{data_path}/preprocessed/")
         self.img_dir = os.path.abspath(f"{data_path}/validation/data/")
         self.name = name
+        
+        self.pipe_tokenizer = pipe_tokenizer
+        self.pipe_tokenizer_2 = pipe_tokenizer_2
 
         # Preprocess prompts
         self.captions_df["input_tokens"] = self.captions_df["caption"].apply(
-            lambda x: self.preprocess(x, pipe_tokenizer)
+            # lambda x: self.preprocess(x, pipe_tokenizer)
+            lambda x: x
         )
         self.captions_df["input_tokens_2"] = self.captions_df["caption"].apply(
-            lambda x: self.preprocess(x, pipe_tokenizer_2)
+            # lambda x: self.preprocess(x, pipe_tokenizer_2)
+            lambda x: x
         )
         self.latent_dtype = latent_dtype
         self.latent_device = latent_device if torch.cuda.is_available() else "cpu"

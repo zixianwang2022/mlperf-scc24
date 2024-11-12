@@ -88,7 +88,6 @@ args = None
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", choices=SUPPORTED_DATASETS.keys(), help="dataset")
-    parser.add_argument("--dataset", choices=SUPPORTED_DATASETS.keys(), help="dataset")
     parser.add_argument("--dataset-path", required=True, help="path to the dataset")
     parser.add_argument(
         "--profile", choices=SUPPORTED_PROFILES.keys(), help="standard profiles"
@@ -233,9 +232,20 @@ class RunnerBase:
         self.post_process.start()
 
     def run_one_item(self, qitem: Item):
-        print("in run_one_item")
+        # print("in run_one_item")
         # run the prediction
         processed_results = []
+        
+        # preprocess the prompts:
+        qitem.inputs = [
+            {
+                "input_tokens": ds.preprocess(input['input_tokens'], ds.pipe_tokenizer),
+                "input_tokens_2": ds.preprocess(input['input_tokens_2'], ds.pipe_tokenizer_2),
+                "latents": torch.tensor(input['latents']).half(),
+            }
+            for input in qitem.inputs
+        ]
+        
         try:
             results = self.model.predict(qitem.inputs)
             processed_results = self.post_process(
@@ -257,17 +267,18 @@ class RunnerBase:
                 response_array = array.array(
                     "B", np.array(processed_results[idx], np.uint8).tobytes()
                 )
-                response_array_refs.append(response_array)
-                bi = response_array.buffer_info()
-                response.append({'query_id': query_id, 'data': bi[0], 'size': bi[1]})
+                # response_array_refs.append(response_array)
+                # bi = response_array.buffer_info()
+                # response.append({'query_id': query_id, 'data': bi[0], 'size': bi[1]})
+                response.append({'query_id': query_id, 'data': response_array.tolist()})
             return response  # Return the response instead of calling QuerySamplesComplete
 
     def enqueue(self, query_samples):
         try:
-            idx = query_sample['index']
-            query_id = query_sample['id']
-            data = query_sample['data']
-            label = None # query_sample['label']
+            idx = [q['index'] for q in query_samples]
+            query_id = [q['id'] for q in query_samples]
+            data = [q['data'] for q in query_samples]
+            label = None # label is never used in any functions
             
             responses = []
             if len(idx) < self.max_batchsize:
@@ -275,7 +286,7 @@ class RunnerBase:
             else:
                 bs = self.max_batchsize
                 for i in range(0, len(idx), bs):
-                    print("samples obtained")
+                    # print("samples obtained")
                     responses.extend(
                         self.run_one_item(
                             Item(query_id[i : i + bs], idx[i : i + bs], data[i : i + bs], label)
@@ -376,7 +387,7 @@ def predict():
             runner = futures[future]
             try:
                 result = future.result()
-                responses.append(result)
+                responses.extend(result)
             except Exception as exc:
                 log.error(f'Runner {runner} generated an exception: {exc}')
 
@@ -399,5 +410,10 @@ def flush_queries():
 if __name__ == "__main__":
     initialize()
     
-    # Change host name and port number 
-    app.run(host='t006-002', port=8888)
+    # get public ip addr of current node
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip_address = s.getsockname()[0]
+    
+    # Change host ip addr and port number 
+    app.run(host=ip_address, port=8888)
