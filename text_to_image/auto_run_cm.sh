@@ -100,5 +100,5 @@ cm run script --tags=generate,inference,submission \
 cm run script --tags=push,github,mlperf,inference,submission \
    --repo_url=https://github.com/zixianwang2022/cm4mlperf-inference \
    --repo_branch=mlperf-inference-results-scc24 \
-   --commit_message="Results on system <HW Name>" \
+   --commit_message="Results on system MI210" \
    --quiet
