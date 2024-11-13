@@ -486,7 +486,8 @@ def main(args):
     )
 
     # QDL and QSL
-    qsl = QSL(count, performance_sample_count, ds=ds)
+    # qsl = QSL(count, performance_sample_count, ds=ds)
+    qsl = QSL(50, performance_sample_count, ds=ds)
     qdl = QDL(qsl, sut_server_addr=args.sut_server, ds=ds)
 
     lg.StartTest(qdl.qdl, qsl.qsl, settings)
