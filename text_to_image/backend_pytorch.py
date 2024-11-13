@@ -57,7 +57,7 @@ class BackendPytorch(backend.Backend):
         return "NCHW"
 
     def load(self):
-        if self.model_path is None:
+        if True:
             log.warning(
                 "Model path not provided, running with default hugging face weights\n"
                 "This may not be valid for official submissions"
