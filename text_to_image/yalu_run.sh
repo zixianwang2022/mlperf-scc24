@@ -1,6 +1,6 @@
 #! /usr/bin/bash
 
-set -x  # Enable debugging
+# set -x  # Enable debugging
 
 start_time=$(date +%s)
 echo "Yalu test script starting to run"
@@ -13,7 +13,10 @@ echo "Yalu test script starting to run"
 # watch -n 1 rocm-smi --showmemuse
 
 mlperf_pytorch="python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --model-path /work1/zixian/youyang1/CM/repos/local/cache/e971d8ea733f4a61/stable_diffusion_fp16 --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1"
-mlperf_mgx="python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-mgx --model-path /work1/zixian/youyang1/models/sdxl-1.0-base --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1"
+
+# Old cmd: python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-mgx --model-path /work1/zixian/youyang1/models/sdxl-1.0-base --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1
+mlperf_mgx="python3 main.py"
+
 mgx_cmd="python StableDiffusionMGX.py --seed 42 --pipeline-type sdxl --onnx-model-path /work1/zixian/youyang1/models/sdxl-1.0-base --fp16=all"
 
 if [ "$1" == "pytorch" ]; then

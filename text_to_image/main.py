@@ -167,7 +167,7 @@ def get_args():
     parser.add_argument("--count", type=int, help="dataset items to use")
     parser.add_argument("--debug", action="store_true", help="debug")
     parser.add_argument(
-        "--performance-sample-count", type=int, help="performance sample count", default=5000
+        "--performance-sample-count", type=int, help="performance sample count", default=1000
     )
     parser.add_argument(
         "--max-latency", type=float, help="mlperf max latency in pct tile"
@@ -314,17 +314,17 @@ class QueueRunner(RunnerBase):
     def handle_tasks(self, tasks_queue):
         """Worker thread."""
         while True:
-            log.info ('getting tasks')
+            # log.info ('getting tasks')
             qitem = tasks_queue.get()
-            log.info ('getten tasks')
+            # log.info ('getten tasks')
             if qitem is None:
                 # None in the queue indicates the parent want us to exit
                 tasks_queue.task_done()
                 break
             self.run_one_item(qitem)
-            log.info ('going to task_done')
+            # log.info ('going to task_done')
             tasks_queue.task_done()
-            log.info ('tasks done')
+            # log.info ('tasks done')
 
     def enqueue(self, query_samples):
         idx = [q.index for q in query_samples]

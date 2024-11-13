@@ -36,11 +36,11 @@ log.addHandler(file_handler)
 
 def download_model(repo_id, model_path):    
     # Zixian: Nov 10: Comment this out because model_path is current dir. 
-    # if os.path.exists(model_path):
-    #     log.info(f"MGX models already exists at {model_path}")
-    #     return
-    # else:
-    #     os.makedirs(model_path, exist_ok=True)
+    if os.path.exists(model_path):
+        log.info(f"MGX models already exists at {model_path}")
+        return
+    else:
+        os.makedirs(model_path, exist_ok=True)
     
     repo_files = list_repo_files(repo_id)
     
@@ -223,11 +223,11 @@ class BackendMIGraphX(backend.Backend):
                 force_compile=force_compile, exhaustive_tune=exhaustive_tune, tokenizers=tokenizers,
                 scheduler=self.scheduler)
             
-            log.info(f"[backend_migraphx.py]: after initializing self.mgx")
+            # log.info(f"[backend_migraphx.py]: after initializing self.mgx")
             
             # self.mgx.warmup(5)
             
-            log.info(f"[backend_migraphx.py]: after mgx.warmup")
+            # log.info(f"[backend_migraphx.py]: after mgx.warmup")
             
         return self
     
@@ -253,7 +253,7 @@ class BackendMIGraphX(backend.Backend):
                 # prompt_token = inputs[i]["input_tokens"]
                 # log.info(f"[mgx backend batchsz=1] inputs[i] -> {inputs[i]}")
                 prompt_in = inputs[i]["caption"]
-                log.info(f"[mgx backend] i -> {i} | prompt_in -> {prompt_in}")
+                # log.info(f"[mgx backend] i -> {i} | prompt_in -> {prompt_in}")
                 seed = random.randint(0, 2**31 - 1)
                 
                 # prompt_in = self.decoder1.decode_tokens(prompt_token['input_ids'])
