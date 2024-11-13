@@ -1,13 +1,8 @@
 {
-    "accuracy_results": {
-        "CLIP_SCORE": 17.581279400736094,
-        "FID_SCORE": 371.37723025970547,
-        "scenario": "TestScenario.Offline"
-    },
     "args": {
-        "accuracy": true,
+        "accuracy": false,
         "audit_conf": "audit.config",
-        "backend": "migraphx",
+        "backend": "pytorch",
         "count": null,
         "dataset": "coco-1024",
         "dataset_path": "coco2014",
@@ -15,25 +10,26 @@
         "device": "cuda",
         "dtype": "fp16",
         "find_peak_performance": false,
+        "gpu_num": 4,
         "ids_path": "tools/sample_ids.txt",
         "latent_framework": "torch",
         "max_batchsize": 1,
         "max_latency": null,
         "mlperf_conf": "mlperf.conf",
         "model_name": "stable-diffusion-xl",
-        "model_path": "/work1/zixian/youyang1/models/sdxl-1.0-base",
+        "model_path": "/work1/zixian/ziw081/CM/models/SDXL/official_pytorch/fp16/stable_diffusion_fp16/",
         "output": "output",
-        "performance_sample_count": 10,
-        "profile": "stable-diffusion-xl-mgx",
-        "qps": 1,
+        "performance_sample_count": 5000,
+        "profile": "stable-diffusion-xl-pytorch",
+        "qps": null,
         "samples_per_query": 8,
         "scenario": "Offline",
         "threads": 1,
-        "time": 5,
+        "time": null,
         "user_conf": "user.conf"
     },
-    "cmdline": "Namespace(dataset='coco-1024', dataset_path='coco2014', profile='stable-diffusion-xl-mgx', scenario='Offline', max_batchsize=1, threads=1, accuracy=True, find_peak_performance=False, backend='migraphx', model_name='stable-diffusion-xl', output='output', qps=1, model_path='/work1/zixian/youyang1/models/sdxl-1.0-base', dtype='fp16', device='cuda', latent_framework='torch', mlperf_conf='mlperf.conf', user_conf='user.conf', audit_conf='audit.config', ids_path='tools/sample_ids.txt', time=5, count=None, debug=False, performance_sample_count=10, max_latency=None, samples_per_query=8)",
+    "cmdline": "Namespace(dataset='coco-1024', dataset_path='coco2014', profile='stable-diffusion-xl-pytorch', scenario='Offline', max_batchsize=1, threads=1, accuracy=False, find_peak_performance=False, backend='pytorch', model_name='stable-diffusion-xl', output='output', qps=None, model_path='/work1/zixian/ziw081/CM/models/SDXL/official_pytorch/fp16/stable_diffusion_fp16/', gpu_num=4, dtype='fp16', device='cuda', latent_framework='torch', mlperf_conf='mlperf.conf', user_conf='user.conf', audit_conf='audit.config', ids_path='tools/sample_ids.txt', time=None, count=None, debug=False, performance_sample_count=5000, max_latency=None, samples_per_query=8)",
     "runtime": "pytorch-SUT",
-    "time": 1731008233,
-    "version": "2.6.0.dev20241018+rocm6.2"
+    "time": 1731449358,
+    "version": "2.6.0.dev20241107+rocm6.2"
 }
