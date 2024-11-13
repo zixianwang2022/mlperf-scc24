@@ -271,13 +271,13 @@ class QDL:
                 for url, queries in zip(self.sut_server_addr, splitted_query_samples)
             }
             
-            for future in as_completed(futures):
-                runner = futures[future]
-                try:
-                    result = future.result()
-                    responses.extend(result)
-                except Exception as exc:
-                    log.error(f'Runner {runner} generated an exception: {exc}')
+            # for future in as_completed(futures):
+            #     runner = futures[future]
+            #     try:
+            #         result = future.result()
+            #         responses.extend(result)
+            #     except Exception as exc:
+            #         log.error(f'Runner {runner} generated an exception: {exc}')
                 
 
     # Send inference request to one host, receive the inference result
@@ -484,7 +484,8 @@ def main(argv):
     )
 
     # QDL and QSL
-    qsl = QSL(count, performance_sample_count, ds=ds)
+    # qsl = QSL(count, performance_sample_count, ds=ds)
+    qsl = QSL(50, performance_sample_count, ds=ds)
     qdl = QDL(qsl, sut_server_addr=args.sut_server, ds=ds)
 
     lg.StartTest(qdl.qdl, qsl.qsl, settings)
