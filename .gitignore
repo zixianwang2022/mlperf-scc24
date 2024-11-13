@@ -10,3 +10,5 @@ text_to_image/output/*
 *.log
 loadgen/
 
+text_to_image/cm-run-script-versions.json
+text_to_image/version_info.json
