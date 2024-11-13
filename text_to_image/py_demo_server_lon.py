@@ -271,13 +271,13 @@ class QDL:
                 for url, queries in zip(self.sut_server_addr, splitted_query_samples)
             }
             
-            for future in as_completed(futures):
-                runner = futures[future]
-                try:
-                    result = future.result()
-                    responses.extend(result)
-                except Exception as exc:
-                    log.error(f'Runner {runner} generated an exception: {exc}')
+            # for future in as_completed(futures):
+            #     runner = futures[future]
+            #     try:
+            #         result = future.result()
+            #         responses.extend(result)
+            #     except Exception as exc:
+            #         log.error(f'Runner {runner} generated an exception: {exc}')
                 
 
     # Send inference request to one host, receive the inference result
@@ -326,8 +326,10 @@ class QDL:
             bi = sample_in_memory.buffer_info()
             response_array_refs.append(sample_in_memory)
             response.append(lg.QuerySampleResponse(sample['query_id'], bi[0], bi[1]))
-        lg.QuerySamplesComplete(response)
             
+        print (f'BEFORE lg.QuerySamplesComplete(response)')
+        lg.QuerySamplesComplete(response)
+        print (f'BEFORE lg.QuerySamplesComplete(response)')
         
         
         '''
@@ -360,8 +362,8 @@ class QDL:
     def __del__(self):
         lg.DestroyQDL(self.qdl)
 
-def main(argv):
-    args = get_args()
+def main(args):
+    # args = get_args()
     
     backend = get_backend(
                     args.backend,
