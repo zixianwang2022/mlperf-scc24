@@ -1,3 +1,4 @@
+
 """
 mlperf inference benchmarking tool
 """
@@ -246,6 +247,10 @@ class RunnerBase:
         finally:
             response_array_refs = []
             response = []
+            
+            # multinode
+            inference_result = [] #[(query_id, array.array), (), ()]
+            
             for idx, query_id in enumerate(qitem.query_id):
                 response_array = array.array(
                     "B", np.array(processed_results[idx], np.uint8).tobytes()
@@ -253,7 +258,13 @@ class RunnerBase:
                 response_array_refs.append(response_array)
                 bi = response_array.buffer_info()
                 response.append(lg.QuerySampleResponse(query_id, bi[0], bi[1]))
+                
+                # multinode
+                inference_result.append((query_id, response_array))
             lg.QuerySamplesComplete(response)
+            
+            # multinode
+            self.inference_results.put(inference_result)
 
     def enqueue(self, query_samples):
         idx = [q.index for q in query_samples]
@@ -277,6 +288,7 @@ class QueueRunner(RunnerBase):
     def __init__(self, model, ds, threads, post_proc=None, max_batchsize=128):
         super().__init__(model, ds, threads, post_proc, max_batchsize)
         self.tasks = Queue(maxsize=threads * 4)
+        self.inference_results = Queue(maxsize=threads * 4)   # { [(query_id, array.array), (), ()] * N }
         self.workers = []
         self.result_dict = {}
 
@@ -316,7 +328,25 @@ class QueueRunner(RunnerBase):
             self.tasks.put(None)
         for worker in self.workers:
             worker.join()
-
+            
+        workers = []
+        # multinode
+        for _ in range(self.threads):
+            worker = threading.Thread(target=self.print_inference_results, args=(self.inference_results,))
+            worker.daemon = True
+            self.workers.append(worker)
+            worker.start()
+    
+    # multinode        
+    def print_inference_results(self, tasks_queue):
+        while True:
+            inference_result = tasks_queue.get()
+            if inference_result is None:
+                # None in the queue indicates the parent want us to exit
+                tasks_queue.task_done()
+                break
+            print(inference_result)
+            tasks_queue.task_done()
 
 def main():
     args = get_args()
