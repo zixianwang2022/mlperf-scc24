@@ -271,13 +271,6 @@ class QDL:
                 for url, queries in zip(self.sut_server_addr, splitted_query_samples)
             }
             
-            # for future in as_completed(futures):
-            #     runner = futures[future]
-            #     try:
-            #         result = future.result()
-            #         responses.extend(result)
-            #     except Exception as exc:
-            #         log.error(f'Runner {runner} generated an exception: {exc}')
                 
 
     # Send inference request to one host, receive the inference result
