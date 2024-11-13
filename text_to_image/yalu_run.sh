@@ -1,5 +1,7 @@
 #! /usr/bin/bash
 
+set -x  # Enable debugging
+
 start_time=$(date +%s)
 echo "Yalu test script starting to run"
 
@@ -23,6 +25,21 @@ elif [ "$1" == "mlperf_mgx" ]; then
 elif [ "$1" == "mgx" ]; then
     echo "Running [mgx] cmd: $mgx_cmd"
     eval $mgx_cmd
+elif [ "$1" == "cm" ]; then
+    cm rm cache --tags=inference,src -f
+    cm rm cache --tags=inference -f
+    cm rm cache --tags=python -f
+    cm pull repo
+
+    cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
+        --model=sdxl \
+        --framework=pytorch \
+        --category=datacenter \
+        --scenario=Offline \
+        --execution_mode=test \
+        --device=rocm \
+        --quiet --precision=float16 \
+        --adr.mlperf-implementation.tags=_branch.yalu,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
 else
     # runs mgx by default
     echo "Running [mlperf_mgx] cmd: $mlperf_mgx"
@@ -41,19 +58,3 @@ duration=$((end_time - start_time))
 
 echo "[$(date)] Yalu test script completed in $duration seconds."
 echo "[$(date)] Yalu test script completed in $duration seconds." >> yalu_run_record.txt
-
-
-# cm rm cache --tags=inference,src -f
-# cm rm cache --tags=inference -f
-# cm rm cache --tags=python -f
-# cm pull repo
-
-# cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
-#   --model=sdxl \
-#   --framework=pytorch \
-#   --category=datacenter \
-#   --scenario=Offline \
-#   --execution_mode=test \
-#   --device=rocm \
-#   --quiet --precision=float16 \
-#   --adr.mlperf-implementation.tags=_branch.yalu,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
