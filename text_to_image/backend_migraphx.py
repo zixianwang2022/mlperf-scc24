@@ -125,7 +125,7 @@ class BackendMIGraphX(backend.Backend):
             raise ValueError(f"{model_id} is not a valid model id")
         
         download_model(self.model_id, self.model_path)
-        log.info(f"Zixian: Returned from download_model")
+        log.info(f"[mgx backend]: Returned from download_model")
         
         
         self.device = device if torch.cuda.is_available() else "cpu"
@@ -253,7 +253,7 @@ class BackendMIGraphX(backend.Backend):
                 # prompt_token = inputs[i]["input_tokens"]
                 # log.info(f"[mgx backend batchsz=1] inputs[i] -> {inputs[i]}")
                 prompt_in = inputs[i]["caption"]
-                log.error(f"[mgx backend] i -> {i} | prompt_in -> {prompt_in}")
+                log.info(f"[mgx backend] i -> {i} | prompt_in -> {prompt_in}")
                 seed = random.randint(0, 2**31 - 1)
                 
                 # prompt_in = self.decoder1.decode_tokens(prompt_token['input_ids'])

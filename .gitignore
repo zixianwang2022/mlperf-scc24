@@ -9,4 +9,4 @@ text_to_image/output/*
 
 *.log
 loadgen/
-
+/text_to_image/downloaded_model_folder
