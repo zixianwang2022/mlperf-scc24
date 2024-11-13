@@ -416,4 +416,4 @@ if __name__ == "__main__":
     ip_address = s.getsockname()[0]
     
     # Change host ip addr and port number 
-    app.run(host=ip_address, port=8888)
+    app.run(host=ip_address, port=8008)

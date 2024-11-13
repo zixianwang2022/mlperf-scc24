@@ -80,7 +80,7 @@ SUPPORTED_PROFILES = {
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--sut-server', default=['http://t007-001:8888','http://t006-001:8888'], nargs='+', help='A list of server address & port')
+    parser.add_argument('--sut-server', default=['http://t007-001:8008','http://t006-001:8008'], nargs='+', help='A list of server address & port')
     parser.add_argument("--dataset", choices=SUPPORTED_DATASETS.keys(), help="dataset")
     parser.add_argument("--dataset-path", required=True, help="path to the dataset")
     parser.add_argument(
