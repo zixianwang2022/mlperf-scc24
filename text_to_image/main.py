@@ -331,6 +331,10 @@ def main():
     #     batch_size=args.max_batchsize
     # )
     # Zixian: Oct 21: create a list of backends for multi-gpu
+    
+    # Zixian: Nov 13: Force batchsize=2 since command line doesn't work 
+    args.max_batchsize = 2
+    
     backends = [get_backend(
                     args.backend,
                     precision=args.dtype,
