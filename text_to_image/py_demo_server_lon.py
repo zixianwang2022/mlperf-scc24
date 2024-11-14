@@ -25,6 +25,8 @@ import mlperf_loadgen as lg
 import numpy as np
 import torch
 
+import struct
+
 import dataset
 import coco
 
@@ -307,24 +309,60 @@ class QDL:
         response = requests.post(url, json={"query_samples": query_samples})
         e = time.time()
         print (f'RETURNED from requests.post on predict at time \t {e}')
+        
+        
+        
+        
         # print(response.json()["result"])
         
-        result = response.json()["result"]
+        # print("result type:", type(result))
+        # print("result:", result)
+        # result = response.json()["result"]
         # print("result type:", type(type(result)))
         # print("result type:", type(result))
+        # print("result:", result)
         # print("result len:", len(result))
         # print("result[0]:", result[0])
+        
+        
+        
+        # response_array_refs = []
+        # response = []
+        # for sample in result:
+        #     sample_in_memory = array.array("B", sample['data'])
+        #     bi = sample_in_memory.buffer_info()
+        #     response_array_refs.append(sample_in_memory)
+        #     response.append(lg.QuerySampleResponse(sample['query_id'], bi[0], bi[1]))
+            
+        response_bytes = response.content
+        offset = 0
+        responses = []
         response_array_refs = []
-        response = []
-        for sample in result:
-            sample_in_memory = array.array("B", sample['data'])
+
+        while offset < len(response_bytes):
+            # Unpack the query_id
+            query_id = struct.unpack_from('Q', response_bytes, offset)[0]
+            offset += 8
+
+            # Unpack the data length
+            data_length = struct.unpack_from('I', response_bytes, offset)[0]
+            offset += 4
+
+            # Extract the data
+            data_bytes = response_bytes[offset:offset + data_length]
+            offset += data_length
+
+            # Convert bytes to array
+            sample_in_memory = array.array("B", data_bytes)
             bi = sample_in_memory.buffer_info()
             response_array_refs.append(sample_in_memory)
-            response.append(lg.QuerySampleResponse(sample['query_id'], bi[0], bi[1]))
+
+            responses.append(lg.QuerySampleResponse(query_id, bi[0], bi[1]))
+        
             
         print (f'BEFORE lg.QuerySamplesComplete(response)')
-        lg.QuerySamplesComplete(response)
-        print (f'BEFORE lg.QuerySamplesComplete(response)')
+        lg.QuerySamplesComplete(responses)
+        print (f'AFTER lg.QuerySamplesComplete(response)')
         
         
         '''

@@ -16,11 +16,12 @@ import sys
 import threading
 import time
 import socket
+import struct
 
 import numpy as np
 import torch
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import subprocess
 
@@ -395,13 +396,26 @@ def predict():
     print (f'RETURNING from predict')
     
     s = time.time() 
-    output = jsonify(result=responses)
+    # output = jsonify(result=responses)
+    response_bytes = bytearray()
+    for resp in responses:
+        query_id = resp['query_id']
+        data_array = np.array(resp['data'], dtype=np.uint8)
+        data_bytes = data_array.tobytes()
+
+        # Pack the query_id (8 bytes) and the length of data (4 bytes), then the data
+        packed_data = struct.pack('Q', query_id)
+        packed_data += struct.pack('I', len(data_bytes))
+        packed_data += data_bytes
+        response_bytes.extend(packed_data)
     e = time.time()
     
     print (f'\n Time to jsonify output is: \t {e-s} \n')
     print (f'\n Mark Time to return: \t {e} \n')
     # Todo: send samples back
-    return output 
+    # return output 
+    print(f'Type of response_bytes: {type(response_bytes)}') 
+    return Response(bytes(response_bytes), mimetype='application/octet-stream')
 
 @app.route('/getname/', methods=['POST', 'GET'])
 def getname():
