@@ -392,6 +392,7 @@ def predict():
                 log.error(f'Runner {runner} generated an exception: {exc}')
 
     print(f'response of len {len(responses)} returned')
+    print (f'RETURNING from predict')
     
     # Todo: send samples back
     return jsonify(result=responses)
