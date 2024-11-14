@@ -333,7 +333,7 @@ def main():
     # Zixian: Oct 21: create a list of backends for multi-gpu
     
     # Zixian: Nov 13: Force batchsize=2 since command line doesn't work 
-    args.max_batchsize = 3
+    args.max_batchsize = 4
     
     backends = [get_backend(
                     args.backend,
@@ -438,7 +438,7 @@ def main():
                         }
                         for _ in range(int(args.max_batchsize))
                     ]
-                    for model in models]
+                    for model in models] * 3 # 3 times warmup samples
     
     # Zixian: Oct 21: warm up each backend 
     # for idx, backend in enumerate (backends): 
