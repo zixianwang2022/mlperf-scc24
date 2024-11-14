@@ -305,7 +305,8 @@ class QDL:
         query_samples = [ {'index': q[0], 'id': q[1], 'data': q[2]} 
                          for q in zip(indexes, ids, data) ]
         response = requests.post(url, json={"query_samples": query_samples})
-        print (f'RETURNED from requests.post on predict')
+        e = time.time()
+        print (f'RETURNED from requests.post on predict at time \t {e}')
         # print(response.json()["result"])
         
         result = response.json()["result"]

@@ -394,8 +394,14 @@ def predict():
     print(f'response of len {len(responses)} returned')
     print (f'RETURNING from predict')
     
+    s = time.time() 
+    output = jsonify(result=responses)
+    e = time.time()
+    
+    print (f'\n Time to jsonify output is: \t {e-s} \n')
+    print (f'\n Mark Time to return: \t {e} \n')
     # Todo: send samples back
-    return jsonify(result=responses)
+    return output 
 
 @app.route('/getname/', methods=['POST', 'GET'])
 def getname():
