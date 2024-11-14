@@ -29,10 +29,12 @@ elif [ "$1" == "mgx" ]; then
     echo "Running [mgx] cmd: $mgx_cmd"
     eval $mgx_cmd
 elif [ "$1" == "cm" ]; then
-    cm rm cache --tags=inference,src -f
-    cm rm cache --tags=inference -f
-    cm rm cache --tags=python -f
-    cm pull repo
+    if [ "$2" == "clean" ]; then
+        cm rm cache --tags=inference,src -f
+        cm rm cache --tags=inference -f
+        cm rm cache --tags=python -f
+        cm pull repo
+    fi
 
     cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
         --model=sdxl \
