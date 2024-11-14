@@ -163,11 +163,11 @@ def get_args():
     parser.add_argument("--ids-path", help="Path to caption ids", default="tools/sample_ids.txt")
 
     # below will override mlperf rules compliant settings - don't use for official submission
-    parser.add_argument("--time", type=int, help="time to scan in seconds", default=5)
+    parser.add_argument("--time", type=int, help="time to scan in seconds")
     parser.add_argument("--count", type=int, help="dataset items to use")
     parser.add_argument("--debug", action="store_true", help="debug")
     parser.add_argument(
-        "--performance-sample-count", type=int, help="performance sample count", default=10
+        "--performance-sample-count", type=int, help="performance sample count", default=1000
     )
     parser.add_argument(
         "--max-latency", type=float, help="mlperf max latency in pct tile"
@@ -254,11 +254,11 @@ class RunnerBase:
         processed_results = []
         try:
             results = self.model.predict(qitem.inputs)
-            log.info("[Line 254] runs fine after results")
+            # log.info("[Line 254] runs fine after results")
             processed_results = self.post_process(
                 results, qitem.content_id, qitem.inputs, self.result_dict
             )
-            log.info("[Line 258] runs fine after processed_results")
+            # log.info("[Line 258] runs fine after processed_results")
             if self.take_accuracy:
                 self.post_process.add_results(processed_results)
             self.result_timing.append(time.time() - qitem.start)
@@ -314,17 +314,17 @@ class QueueRunner(RunnerBase):
     def handle_tasks(self, tasks_queue):
         """Worker thread."""
         while True:
-            log.info ('getting tasks')
+            # log.info ('getting tasks')
             qitem = tasks_queue.get()
-            log.info ('getten tasks')
+            # log.info ('getten tasks')
             if qitem is None:
                 # None in the queue indicates the parent want us to exit
                 tasks_queue.task_done()
                 break
             self.run_one_item(qitem)
-            log.info ('going to task_done')
+            # log.info ('going to task_done')
             tasks_queue.task_done()
-            log.info ('tasks done')
+            # log.info ('tasks done')
 
     def enqueue(self, query_samples):
         idx = [q.index for q in query_samples]

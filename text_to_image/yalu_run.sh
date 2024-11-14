@@ -1,5 +1,7 @@
 #! /usr/bin/bash
 
+# set -x  # Enable debugging
+
 start_time=$(date +%s)
 echo "Yalu test script starting to run"
 
@@ -11,7 +13,10 @@ echo "Yalu test script starting to run"
 # watch -n 1 rocm-smi --showmemuse
 
 mlperf_pytorch="python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --model-path /work1/zixian/youyang1/CM/repos/local/cache/e971d8ea733f4a61/stable_diffusion_fp16 --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1"
-mlperf_mgx="python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-mgx --model-path /work1/zixian/youyang1/models/sdxl-1.0-base --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1"
+
+# Old cmd: python3 main.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-mgx --model-path /work1/zixian/youyang1/models/sdxl-1.0-base --dtype fp16 --device cuda --time 5 --performance-sample-count 10 --scenario Offline --qps 1
+mlperf_mgx="python3 main.py"
+
 mgx_cmd="python StableDiffusionMGX.py --seed 42 --pipeline-type sdxl --onnx-model-path /work1/zixian/youyang1/models/sdxl-1.0-base --fp16=all"
 
 if [ "$1" == "pytorch" ]; then
@@ -23,6 +28,23 @@ elif [ "$1" == "mlperf_mgx" ]; then
 elif [ "$1" == "mgx" ]; then
     echo "Running [mgx] cmd: $mgx_cmd"
     eval $mgx_cmd
+elif [ "$1" == "cm" ]; then
+    if [ "$2" == "clean" ]; then
+        cm rm cache --tags=inference,src -f
+        cm rm cache --tags=inference -f
+        cm rm cache --tags=python -f
+        cm pull repo
+    fi
+
+    cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
+        --model=sdxl \
+        --framework=pytorch \
+        --category=datacenter \
+        --scenario=Offline \
+        --execution_mode=test \
+        --device=rocm \
+        --quiet --precision=float16 \
+        --adr.mlperf-implementation.tags=_branch.yalu,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
 else
     # runs mgx by default
     echo "Running [mlperf_mgx] cmd: $mlperf_mgx"
