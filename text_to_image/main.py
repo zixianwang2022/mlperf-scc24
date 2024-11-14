@@ -333,7 +333,7 @@ def main():
     # Zixian: Oct 21: create a list of backends for multi-gpu
     
     # Zixian: Nov 13: Force batchsize=2 since command line doesn't work 
-    args.max_batchsize = 2
+    args.max_batchsize = 3
     
     backends = [get_backend(
                     args.backend,
