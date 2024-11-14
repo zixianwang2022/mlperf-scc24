@@ -88,7 +88,7 @@ def get_args():
     parser.add_argument(
         "--max-batchsize",
         type=int,
-        default=1,
+        default=2,
         help="max batch size in a single inference",
     )
     parser.add_argument("--threads", default=1, type=int, help="threads")
