@@ -76,6 +76,11 @@ SUPPORTED_PROFILES = {
         "backend": "pytorch-dist",
         "model-name": "stable-diffusion-xl",
     },
+    "stable-diffusion-mgx": {
+        "dataset": "coco-1024",
+        "backend": "migraphx",
+        "model-name": "stable-diffusion-xl",
+    },
 }
 
 def get_args():
@@ -104,7 +109,7 @@ def get_args():
         action="store_true",
         help="enable finding peak performance pass",
     )
-    parser.add_argument("--backend", help="Name of the backend")
+    parser.add_argument("--backend", help="Name of the backend", default="migraphx")
     parser.add_argument("--model-name", help="Name of the model")
     parser.add_argument("--output", default="output", help="test results")
     parser.add_argument("--qps", type=int, help="target qps")
