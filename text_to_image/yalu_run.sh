@@ -29,33 +29,24 @@ elif [ "$1" == "mgx" ]; then
     echo "Running [mlperf_mgx] cmd: $mlperf_mgx"
     eval $mlperf_mgx
 elif [ "$1" == "cm" ]; then
-    for arg in "$@"; do
-        if [ $arg == "clean" ]; then 
-            cm rm cache --tags=inference,src -f
-            cm rm cache --tags=inference -f
-            cm rm cache --tags=python -f
-            cm pull repo
-        fi
-
-        if [ $arg == "multi_mgx" ]; then
-            mgx_multi="True"
-            echo "Running mgx multinode"
-        fi
-    done
-    # PyTorch & Multi-node Implementation
-    if [ $mgx_multi == "False" ]; then
-        cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
-            --model=sdxl \
-            --framework=pytorch \
-            --category=datacenter \
-            --scenario=Offline \
-            --execution_mode=test \
-            --device=rocm \
-            --quiet --precision=float16 \
-            --adr.mlperf-implementation.tags=_branch.multinode,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
-    else
-        echo "mgx_multi is True"
+    if [ "$2" == "clean" ]; then 
+        cm rm cache --tags=inference,src -f
+        cm rm cache --tags=inference -f
+        cm rm cache --tags=python -f
+        cm pull repo
     fi
+    # MIGraphX & Multi-node Implementation
+
+    cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
+        --model=sdxl \
+        --framework=pytorch \
+        --category=datacenter \
+        --scenario=Offline \
+        --execution_mode=test \
+        --device=rocm \
+        --quiet --precision=float16 \
+        --adr.mlperf-implementation.tags=_branch.multinode-mgx,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
+
     # cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
     #     --model=sdxl \
     #     --framework=pytorch \
@@ -68,33 +59,32 @@ elif [ "$1" == "cm" ]; then
 else
     # runs cm by default
     echo "Running CM multinode..."
-    for arg in "$@"; do
-        if [ $arg == "clean" ]; then 
-            cm rm cache --tags=inference,src -f
-            cm rm cache --tags=inference -f
-            cm rm cache --tags=python -f
-            cm pull repo
-        fi
 
-        if [ $arg == "multi_mgx" ]; then
-            mgx_multi="True"
-            echo "Running mgx multinode"
-        fi
-    done
-    # PyTorch & Multi-node Implementation
-    if [ $mgx_multi == "False" ]; then
-        cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
-            --model=sdxl \
-            --framework=pytorch \
-            --category=datacenter \
-            --scenario=Offline \
-            --execution_mode=test \
-            --device=rocm \
-            --quiet --precision=float16 \
-            --adr.mlperf-implementation.tags=_branch.multinode,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
-    else
-        echo "mgx_multi is True"
+    # Multinode from source
+    # Run these from different windows
+    # server_sut:
+    # python sut_over_network_demo.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-migraphx --dtype fp16 --device cuda --scenario Offline
+
+    # network_server:
+    # python main.py  --dataset=coco-1024 --dataset-path=/work1/zixian/youyang1/mlperf-scc24/text_to_image/coco2014 --profile=stable-diffusion-xl-migraphx --dtype=fp16 --device=cuda --time=30 --scenario=Offline
+
+    if [ "$1" == "clean" ]; then 
+        cm rm cache --tags=inference,src -f
+        cm rm cache --tags=inference -f
+        cm rm cache --tags=python -f
+        cm pull repo
     fi
+
+    # MIGraphX & Multi-node Implementation
+    cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
+        --model=sdxl \
+        --framework=pytorch \
+        --category=datacenter \
+        --scenario=Offline \
+        --execution_mode=test \
+        --device=rocm \
+        --quiet --precision=float16 \
+        --adr.mlperf-implementation.tags=_branch.multinode-mgx,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
 fi
 
 
@@ -103,12 +93,3 @@ duration=$((end_time - start_time))
 
 echo "[$(date)] Yalu test script completed in $duration seconds."
 echo "[$(date)] Yalu test script completed in $duration seconds." >> yalu_run_record.txt
-
-
-# Multinode from source
-# Run these from different windows
-# server_sut:
-# python sut_over_network_demo.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-migraphx --dtype fp16 --device cuda --scenario Offline
-
-# network_server:
-# python main.py  --dataset=coco-1024 --dataset-path=/work1/zixian/youyang1/mlperf-scc24/text_to_image/coco2014 --profile=stable-diffusion-xl-migraphx --dtype=fp16 --device=cuda --time=30 --scenario=Offline 
