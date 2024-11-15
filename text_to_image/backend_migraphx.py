@@ -225,13 +225,7 @@ class BackendMIGraphX(backend.Backend):
                 refiner_compiled_model_path=None, fp16=fp16,
                 force_compile=force_compile, exhaustive_tune=exhaustive_tune, tokenizers=tokenizers,
                 scheduler=self.scheduler)
-            
-            # log.info(f"[backend_migraphx.py]: after initializing self.mgx")
-            
-            # self.mgx.warmup(5)
-            
-            # log.info(f"[backend_migraphx.py]: after mgx.warmup")
-            
+                        
         return self
     
     def predict(self, inputs):
@@ -247,11 +241,11 @@ class BackendMIGraphX(backend.Backend):
         # not using refiner, so negative_aesthetic_score = 0
         # defaults to not verbose
         verbose = False
-        #! The main pipeline from loadgen doesn't have text prompt, only tokens
         
         for i in range(0, len(inputs), self.batch_size):
-            latents_input = [inputs[idx]["latents"] for idx in range(i, min(i+self.batch_size, len(inputs)))]
-            latents_input = torch.cat(latents_input).to(self.device)            
+            # log.info(f"[mgx backend] inputs[i].keys -> {inputs[i].keys()}")
+            # log.info(f"[mgx backend] type(inputs[i]['latents']) -> {type(inputs[i]['latents'])}")
+            latents_input = inputs[i]['latents'].to(self.device)
             if self.batch_size == 1:
                 # prompt_token = inputs[i]["input_tokens"]
                 # log.info(f"[mgx backend batchsz=1] inputs[i] -> {inputs[i]}")
@@ -267,12 +261,7 @@ class BackendMIGraphX(backend.Backend):
                     refiner_negative_aesthetic_score=0, verbose=verbose,
                     prompt_tokens=None, device=self.device, latents_in=latents_input)
                 
-                # result shape = (3, 1024, 1024)
-                
-                # img_name = f"{self.device}_{random.randint(0, 1000)}.jpg"
-                # image = StableDiffusionMGX.convert_to_rgb_image(result)
-                # StableDiffusionMGX.save_image(image, img_name)
-                # log.info(f"[mgx backend batchsz=1] Image saved to {img_name}")
+                # result shape = (3, 1024, 1024)                
                 #! COCO needs this to be 3-dimensions
                 
                 new_res = (result / 2 + 0.5).clamp(0, 1)
@@ -299,6 +288,6 @@ class BackendMIGraphX(backend.Backend):
                         prompt_tokens=None, device=self.device, latents_in=latents_input)
 
                     new_res = (result / 2 + 0.5).clamp(0, 1)
-                    images.extend(new_res)
+                    images.extend(new_res)        
 
         return images

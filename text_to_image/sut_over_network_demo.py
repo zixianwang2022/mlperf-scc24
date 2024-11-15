@@ -197,6 +197,11 @@ def get_backend(backend, **kwargs):
         from backend_pytorch import BackendPytorch
 
         backend = BackendPytorch(**kwargs)
+        
+    elif backend == "migraphx":
+        from backend_migraphx import BackendMIGraphX
+
+        backend = BackendMIGraphX(**kwargs)
 
     elif backend == "debug":
         from backend_debug import BackendDebug
@@ -245,15 +250,18 @@ class RunnerBase:
         # preprocess the prompts:
         qitem.inputs = [
             {
-                "input_tokens": ds.preprocess(input['input_tokens'], ds.pipe_tokenizer),
-                "input_tokens_2": ds.preprocess(input['input_tokens_2'], ds.pipe_tokenizer_2),
+                # "input_tokens": ds.preprocess(input['input_tokens'], ds.pipe_tokenizer),
+                # "input_tokens_2": ds.preprocess(input['input_tokens_2'], ds.pipe_tokenizer_2),
                 "caption": input['caption'],
-                "latents": torch.tensor(input['latents']).half(),
+                "latents": torch.tensor(input['latents']).half(),  #.half()
             }
             for input in qitem.inputs
         ]
-        
+        # 
         try:
+            # log.info(f"[Yalu] qitem.inputs[0]['caption'] -> {qitem.inputs[0].get('caption')}")
+            # log.info(f"[Yalu] qitem.inputs[0]['latents'] -> {qitem.inputs[0].get('latents')}")
+            # log.info(f"[Yalu] qitem.inputs length -> {len(qitem.inputs)}")
             results = self.model.predict(qitem.inputs)
             processed_results = self.post_process(
                 results, qitem.content_id, qitem.inputs, self.result_dict

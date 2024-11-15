@@ -108,7 +108,7 @@ echo "[$(date)] Yalu test script completed in $duration seconds." >> yalu_run_re
 # Multinode from source
 # Run these from different windows
 # server_sut:
-# python sut_over_network_demo.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-pytorch --dtype fp16 --device cuda --scenario Offline --max-batchsize 4
+# python sut_over_network_demo.py --dataset "coco-1024" --dataset-path coco2014 --profile stable-diffusion-xl-migraphx --dtype fp16 --device cuda --scenario Offline
 
 # network_server:
-# python main.py  --dataset=coco-1024 --dataset-path=/work1/zixian/ziw081/inference/text_to_image/coco2014 --profile=stable-diffusion-xl-pytorch --dtype=fp16 --device=cuda --time=30 --scenario=Offline 
+# python main.py  --dataset=coco-1024 --dataset-path=/work1/zixian/youyang1/mlperf-scc24/text_to_image/coco2014 --profile=stable-diffusion-xl-migraphx --dtype=fp16 --device=cuda --time=30 --scenario=Offline 

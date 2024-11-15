@@ -74,7 +74,7 @@ SUPPORTED_PROFILES = {
         "backend": "pytorch-dist",
         "model-name": "stable-diffusion-xl",
     },
-    "stable-diffusion-mgx": {
+    "stable-diffusion-migraphx": {
         "dataset": "coco-1024",
         "backend": "migraphx",
         "model-name": "stable-diffusion-xl",
@@ -201,6 +201,8 @@ def get_backend(backend, **kwargs):
         
     elif backend == "migraphx":
         from backend_migraphx import BackendMIGraphX
+        
+        backend = BackendMIGraphX(**kwargs)
 
     elif backend == "debug":
         from backend_debug import BackendDebug
