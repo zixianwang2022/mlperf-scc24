@@ -263,9 +263,9 @@ class QDL:
         splitted_query_samples = []
         for idx in range (len (self.sut_server_addr)): 
             if idx == len (self.sut_server_addr) -1: 
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len:])
+                splitted_query_samples.append (query_samples[idx*query_samples_seg_len +20:])
             else:
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len])
+                splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len +20])
         
         responses = []
         with ThreadPoolExecutor(max_workers=len(self.sut_server_addr)) as executor:
