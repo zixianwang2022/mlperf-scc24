@@ -25,3 +25,6 @@ text_to_image/output/
 text_to_image/output_copy/
 text_to_image/model/
 
+*.log
+loadgen/*
+text_to_image/downloaded_model_folder/
