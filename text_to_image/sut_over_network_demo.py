@@ -21,6 +21,7 @@ import struct
 import pickle 
 import numpy as np
 import torch
+import random 
 
 from flask import Flask, request, jsonify, Response
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -396,9 +397,9 @@ def predict():
     print(f'response of len {len(responses)} returned')
     print (f'RETURNING from predict')
     
+    random_number = random.randint(10000, 99999)
     
-    
-    output_path = '/work1/zixian/ziw081/cache/out.pkl'
+    output_path = f'/work1/zixian/ziw081/cache/out_{random_number}.pkl'
     
     
     s = time.time() 

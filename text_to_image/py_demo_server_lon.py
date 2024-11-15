@@ -386,9 +386,13 @@ class QDL:
 
 
         # Read 'responses' from the shared file using pickle
+        s = time.time()
         with open(output_path, 'rb') as f:
             responses = pickle.load(f)
-
+        e = time.time()
+        
+        print (f'\n Time to read output is: \t {e-s} \n')
+        
         # Process 'responses' to create QuerySampleResponse objects
         response_array_refs = []
         response_list = []
