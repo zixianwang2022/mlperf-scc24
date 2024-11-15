@@ -261,11 +261,19 @@ class QDL:
         query_samples_len = len (query_samples)
         query_samples_seg_len = int (query_samples_len / len (self.sut_server_addr))
         splitted_query_samples = []
+        
+        # Offload workload from farther node to closer node
+        offload_samples = 20 
+        if query_samples_len < 60: 
+            offload_samples = 0
+            
         for idx in range (len (self.sut_server_addr)): 
+            
+            
             if idx == len (self.sut_server_addr) -1: 
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len +20:])
+                splitted_query_samples.append (query_samples[idx*query_samples_seg_len +offload_samples:])
             else:
-                splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len +20])
+                splitted_query_samples.append (query_samples[idx*query_samples_seg_len : (idx+1)*query_samples_seg_len +offload_samples])
         
         responses = []
         with ThreadPoolExecutor(max_workers=len(self.sut_server_addr)) as executor:
