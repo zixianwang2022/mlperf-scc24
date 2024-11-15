@@ -569,6 +569,7 @@ def main():
         settings.max_duration_ms = args.time * MILLI_SEC
 
     if args.qps:
+        log.info(f"modifying settings due to args.qps -> {args.qps}")
         qps = float(args.qps)
         settings.server_target_qps = qps
         settings.offline_expected_qps = qps
