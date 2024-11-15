@@ -34,7 +34,7 @@ file_handler.setLevel("INFO")
 file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
 
-def download_model(repo_id, model_path):    
+def download_model(repo_id, model_path="/work1/zixian/youyang1/mlperf-scc24/text_to_image/downloaded_model_folder"):    
     # Zixian: Nov 10: Comment this out because model_path is current dir. 
     if os.path.exists(model_path):
         log.info(f"MGX models already exists at {model_path}")
@@ -113,7 +113,8 @@ class BackendMIGraphX(backend.Backend):
         # Zixian: Nov 10: Hard code to set model_path to current dir 
         # self.model_path = model_path
         # self.model_path = os.getcwd()
-        self.model_path = os.path.join(os.getcwd(), "downloaded_model_folder")
+        
+        # self.model_path = os.path.join(os.getcwd(), "downloaded_model_folder")
         if self.model_path is None:            
             raise SystemExit("Provide a valid Model Path to correctly run the program, exiting now...")
         
@@ -124,7 +125,8 @@ class BackendMIGraphX(backend.Backend):
         else:
             raise ValueError(f"{model_id} is not a valid model id")
         
-        download_model(self.model_id, self.model_path)
+        #! Yalu Ouyang [Nov 14 2024] Can arbitrarily specify a path, goes to fixed path by default
+        download_model(self.model_id)
         log.info(f"[mgx backend]: Returned from download_model")
         
         

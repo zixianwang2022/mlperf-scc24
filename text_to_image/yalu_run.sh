@@ -22,6 +22,8 @@ mgx_cmd="python StableDiffusionMGX.py --seed 42 --pipeline-type sdxl --onnx-mode
 if [ "$1" == "pytorch" ]; then
     echo "Running [mlperf_pytorch] cmd: $mlperf_pytorch"
     eval $mlperf_pytorch
+elif [ "$1" == "mgx_path" ]; then
+    export PYTHONPATH=/work1/zixian/youyang1/AMDMIGraphX/build/lib:$PYTHONPATH
 elif [ "$1" == "mlperf_mgx" ]; then
     echo "Running [mlperf_mgx] cmd: $mlperf_mgx"
     eval $mlperf_mgx
@@ -35,8 +37,16 @@ elif [ "$1" == "cm" ]; then
         cm rm cache --tags=python -f
         cm pull repo
     fi
-
-    cm run script --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
+    # cm run script --tags=run-mlperf,inference,_r4.1-dev,_short,_scc24-base \
+    # --model=sdxl \
+    # --framework=pytorch \
+    # --category=datacenter \
+    # --scenario=Offline \
+    # --execution_mode=test \
+    # --device=rocm \
+    # --quiet --precision=float16 \
+    # --adr.mlperf-implementation.tags=_branch.yalu,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
+    cm run script --rerun --tags=run-mlperf,inference,_r4.1-dev,_scc24-main \
         --model=sdxl \
         --framework=pytorch \
         --category=datacenter \
@@ -44,7 +54,8 @@ elif [ "$1" == "cm" ]; then
         --execution_mode=test \
         --device=rocm \
         --quiet --precision=float16 \
-        --adr.mlperf-implementation.tags=_branch.yalu,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no
+        --adr.mlperf-implementation.tags=_branch.yalu,_repo.https://github.com/zixianwang2022/mlperf-scc24 --adr.mlperf-implementation.version=custom  --env.CM_GET_PLATFORM_DETAILS=no \
+        --adr/inference-src.tags=_repo.https://github.com/mlcommons/inference
 else
     # runs mgx by default
     echo "Running [mlperf_mgx] cmd: $mlperf_mgx"
