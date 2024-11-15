@@ -115,7 +115,7 @@ def get_args():
     parser.add_argument("--backend", default='migraphx', help="Name of the backend")
     parser.add_argument("--model-name", help="Name of the model")
     parser.add_argument("--output", default="output", help="test results")
-    parser.add_argument("--qps", type=int, help="target qps")
+    parser.add_argument("--qps", type=int, help="target qps", default=1)
     parser.add_argument("--model-path", 
         default="/work1/zixian/youyang1/models/sdxl-1.0-base",
         help="Path to model weights")
@@ -573,6 +573,8 @@ def main():
         settings.server_target_qps = qps
         settings.offline_expected_qps = qps
 
+    log.info(f"current qps -> {qps} | args.qps -> {qps}")
+    
     if count_override:
         settings.min_query_count = count
         settings.max_query_count = count
