@@ -451,7 +451,8 @@ def predict():
     # return Response(bytes(response_bytes), mimetype='application/octet-stream')
     
     # return jsonify(result=response_filenames)
-    return jsonify(result=[{'query_id': 'hi', 'filename': 'a'}])
+    # return jsonify(result=[{'query_id': 'hi', 'output_path': output_path}])
+    return jsonify(result={'output_path': output_path})
 
 @app.route('/getname/', methods=['POST', 'GET'])
 def getname():

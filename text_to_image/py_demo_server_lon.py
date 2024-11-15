@@ -410,7 +410,7 @@ class QDL:
         
             
         print (f'BEFORE lg.QuerySamplesComplete(response)')
-        lg.QuerySamplesComplete(responses)
+        lg.QuerySamplesComplete(response_list)
         print (f'AFTER lg.QuerySamplesComplete(response)')
         
         
