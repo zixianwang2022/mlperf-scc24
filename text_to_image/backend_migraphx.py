@@ -112,8 +112,8 @@ class BackendMIGraphX(backend.Backend):
     ):
         super(BackendMIGraphX, self).__init__()
         # Zixian: Nov 10: Hard code to set model_path to current dir 
-        # self.model_path = model_path
-        # self.model_path = os.getcwd()
+        #! Yalu Ouyang [Nov 14 2024] Default model path
+        self.model_path = "/work1/zixian/youyang1/mlperf-scc24/text_to_image/downloaded_model_folder"
         
         # self.model_path = os.path.join(os.getcwd(), "downloaded_model_folder")
         if self.model_path is None:            
