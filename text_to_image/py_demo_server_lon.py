@@ -17,6 +17,7 @@ import collections
 import logging
 import os
 import sys
+import pickle 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from absl import app
@@ -334,30 +335,78 @@ class QDL:
         #     response_array_refs.append(sample_in_memory)
         #     response.append(lg.QuerySampleResponse(sample['query_id'], bi[0], bi[1]))
             
-        response_bytes = response.content
-        offset = 0
-        responses = []
+        # response_bytes = response.content
+        # offset = 0
+        # responses = []
+        # response_array_refs = []
+
+        # while offset < len(response_bytes):
+        #     # Unpack the query_id
+        #     query_id = struct.unpack_from('Q', response_bytes, offset)[0]
+        #     offset += 8
+
+        #     # Unpack the data length
+        #     data_length = struct.unpack_from('I', response_bytes, offset)[0]
+        #     offset += 4
+
+        #     # Extract the data
+        #     data_bytes = response_bytes[offset:offset + data_length]
+        #     offset += data_length
+
+        #     # Convert bytes to array
+        #     sample_in_memory = array.array("B", data_bytes)
+        #     bi = sample_in_memory.buffer_info()
+        #     response_array_refs.append(sample_in_memory)
+
+        #     responses.append(lg.QuerySampleResponse(query_id, bi[0], bi[1]))
+        # result = response.json()["result"]
+        # shared_directory = '/work1/zixian/ziw081/cache/'
+        
+        # responses = []
+        # response_array_refs = []
+
+        # for sample in result:
+        #     query_id = sample['query_id']
+        #     filename = sample['filename']
+        #     file_path = os.path.join(shared_directory, filename)
+
+        #     # Read the data from the file
+        #     with open(file_path, 'rb') as f:
+        #         data_bytes = f.read()
+
+        #     # Convert bytes to array
+        #     sample_in_memory = array.array("B", data_bytes)
+        #     bi = sample_in_memory.buffer_info()
+        #     response_array_refs.append(sample_in_memory)
+        #     responses.append(lg.QuerySampleResponse(query_id, bi[0], bi[1]))
+        
+        # Parse the JSON response to get the filename
+        result = response.json()["result"]
+        output_path = result['output_path']
+
+
+        # Read 'responses' from the shared file using pickle
+        with open(output_path, 'rb') as f:
+            responses = pickle.load(f)
+
+        # Process 'responses' to create QuerySampleResponse objects
         response_array_refs = []
-
-        while offset < len(response_bytes):
-            # Unpack the query_id
-            query_id = struct.unpack_from('Q', response_bytes, offset)[0]
-            offset += 8
-
-            # Unpack the data length
-            data_length = struct.unpack_from('I', response_bytes, offset)[0]
-            offset += 4
-
-            # Extract the data
-            data_bytes = response_bytes[offset:offset + data_length]
-            offset += data_length
-
-            # Convert bytes to array
-            sample_in_memory = array.array("B", data_bytes)
+        response_list = []
+        for resp in responses:
+            query_id = resp['query_id']
+            data = resp['data']
+            # Ensure 'data' is a bytes-like object
+            if isinstance(data, list):
+                data = bytes(data)
+            elif isinstance(data, np.ndarray):
+                data = data.tobytes()
+            # Convert data to array
+            sample_in_memory = array.array("B", data)
             bi = sample_in_memory.buffer_info()
             response_array_refs.append(sample_in_memory)
-
-            responses.append(lg.QuerySampleResponse(query_id, bi[0], bi[1]))
+            response_list.append(lg.QuerySampleResponse(query_id, bi[0], bi[1]))
+        
+        
         
             
         print (f'BEFORE lg.QuerySamplesComplete(response)')

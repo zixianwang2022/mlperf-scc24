@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 import argparse
 import array
 import collections
+import io
 import json
 import logging
 import os
@@ -17,7 +18,7 @@ import threading
 import time
 import socket
 import struct
-
+import pickle 
 import numpy as np
 import torch
 
@@ -395,27 +396,62 @@ def predict():
     print(f'response of len {len(responses)} returned')
     print (f'RETURNING from predict')
     
+    
+    
+    output_path = '/work1/zixian/ziw081/cache/out.pkl'
+    
+    
     s = time.time() 
     # output = jsonify(result=responses)
-    response_bytes = bytearray()
-    for resp in responses:
-        query_id = resp['query_id']
-        data_array = np.array(resp['data'], dtype=np.uint8)
-        data_bytes = data_array.tobytes()
+    # The above code initializes an empty bytearray named `response_bytes`.
+    #response_bytes = bytearray()
+    # response_stream = io.BytesIO()
+    # for resp in responses:
+    #     query_id = resp['query_id']
+    #     data_array = np.array(resp['data'], dtype=np.uint8)
+    #     data_bytes = data_array.tobytes()
 
-        # Pack the query_id (8 bytes) and the length of data (4 bytes), then the data
-        packed_data = struct.pack('Q', query_id)
-        packed_data += struct.pack('I', len(data_bytes))
-        packed_data += data_bytes
-        response_bytes.extend(packed_data)
+    #     # Pack the query_id (8 bytes) and the length of data (4 bytes), then the data
+    #     packed_data = struct.pack('Q', query_id)
+    #     packed_data += struct.pack('I', len(data_bytes))
+    #     packed_data += data_bytes
+    #     response_stream.write(packed_data)
+    
+    
+    # response_filenames = []
+
+    # for resp in responses:
+    #     query_id = resp['query_id']
+    #     data_array = np.array(resp['data'], dtype=np.uint8)
+    #     data_bytes = data_array.tobytes()
+
+    #     # Generate a unique filename using query_id and a UUID
+    #     filename = f'{query_id}_{uuid.uuid4().hex}.bin'
+    #     file_path = os.path.join(shared_directory, filename)
+
+    #     # Write the data to the shared directory
+    #     with open(file_path, 'wb') as f:
+    #         f.write(data_bytes)
+
+    #     # Append the filename to the response
+    #     response_filenames.append({'query_id': query_id, 'filename': filename})
+
+    with open (output_path, 'wb') as f: 
+        pickle.dump(responses, f, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    
     e = time.time()
     
     print (f'\n Time to jsonify output is: \t {e-s} \n')
     print (f'\n Mark Time to return: \t {e} \n')
     # Todo: send samples back
     # return output 
-    print(f'Type of response_bytes: {type(response_bytes)}') 
-    return Response(bytes(response_bytes), mimetype='application/octet-stream')
+    # response_bytes = response_stream.getvalue()
+    # print(f'Type of response_bytes: {type(response_bytes)}') 
+    # return Response(bytes(response_bytes), mimetype='application/octet-stream')
+    
+    # return jsonify(result=response_filenames)
+    return jsonify(result=[{'query_id': 'hi', 'filename': 'a'}])
 
 @app.route('/getname/', methods=['POST', 'GET'])
 def getname():
