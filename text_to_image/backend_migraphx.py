@@ -34,7 +34,7 @@ file_handler.setLevel("INFO")
 file_handler.setFormatter(formatter)
 log.addHandler(file_handler)
 
-def download_model(repo_id, model_path="/work1/zixian/youyang1/mlperf-scc24/text_to_image/downloaded_model_folder"):
+def download_model(repo_id, model_path="/liqid/ziw081/downloaded_model_folder"):
     # Zixian: Nov 10: Comment this out because model_path is current dir. 
     log.info(f"[mgx backend] Checking if path exists at {model_path}")
     if os.path.exists(model_path):
@@ -113,7 +113,7 @@ class BackendMIGraphX(backend.Backend):
         super(BackendMIGraphX, self).__init__()
         # Zixian: Nov 10: Hard code to set model_path to current dir 
         #! Yalu Ouyang [Nov 14 2024] Default model path
-        self.model_path = "/work1/zixian/youyang1/mlperf-scc24/text_to_image/downloaded_model_folder"
+        self.model_path = "/liqid/ziw081/downloaded_model_folder"
         
         # self.model_path = os.path.join(os.getcwd(), "downloaded_model_folder")
         if self.model_path is None:            
